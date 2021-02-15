@@ -5,6 +5,7 @@ import time
 import threading
 import math
 from collections import defaultdict as ddict
+from functools import partial
 
 
 class KeyHandler:
@@ -76,8 +77,7 @@ class KeyHandler:
         })
 
         self.binds_up = ddict(lambda: ddict(lambda: default), {
-            frozenset(): ddict(lambda: default, {
-            }),
+            frozenset(): ddict(lambda: default, {}),
             frozenset(["Capital"]): ddict(lambda: default, {
                 "E": [mouse_remove, [0, -1]],
                 "S": [mouse_remove, [-1, 0]],
@@ -85,8 +85,7 @@ class KeyHandler:
                 "F": [mouse_remove, [1, 0]],
                 "R": [pyautogui.mouseUp, []],
             }),
-            frozenset(["F13"]): ddict(lambda: default, {
-            }),
+            frozenset(["F13"]): ddict(lambda: default, {}),
             frozenset(["Capital", "F13"]): ddict(lambda: default, {
                 "R": [pyautogui.mouseUp, []],
             })
@@ -94,14 +93,14 @@ class KeyHandler:
 
         # allow for repetition
         for i in range(1, 10):
-            self.binds_down[frozenset(["Capital"])][str(i)] = [self.set_rep, [i]]
-            self.binds_down[frozenset(["Capital", "F13"])][str(i)] = [self.set_rep, [i]]
+            self.binds_down[frozenset(["Capital"])][str(i)] = [partial(self.__setattr__, "rep"), [i]]
+            self.binds_down[frozenset(["Capital", "F13"])][str(i)] = [partial(self.__setattr__, "rep"), [i]]
 
         # insert and remove modifiers
         for key in self.binds_down.keys():
             for modifier in self.modifiers:
-                self.binds_down[key][modifier] = [self.add_modifier, [modifier]]
-                self.binds_up[key][modifier] = [self.remove_modifier, [modifier]]
+                self.binds_down[key][modifier] = [self.curr_mods.add, [modifier]]
+                self.binds_up[key][modifier] = [self.curr_mods.remove, [modifier]]
 
         # special reset
         for key in self.binds_up.keys():
@@ -115,15 +114,6 @@ class KeyHandler:
             for k in reversed(keys):
                 pyautogui.keyUp(k)
         self.rep = 1
-
-    def set_rep(self, val):
-        self.rep = val
-
-    def add_modifier(self, val):
-        self.curr_mods.add(val)
-
-    def remove_modifier(self, val):
-        self.curr_mods.remove(val)
 
     def reset(self):
         self.rep = 1
