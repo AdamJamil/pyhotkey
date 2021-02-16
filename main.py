@@ -2,10 +2,122 @@ import PyHook3
 import pythoncom
 import pyautogui
 import time
+from datetime import datetime, date, timedelta
 import threading
 import math
 from collections import defaultdict as ddict
 from functools import partial
+import subprocess
+import os
+from win32gui import GetWindowText, GetForegroundWindow
+from win10toast import ToastNotifier
+
+
+class RunCMDThead(threading.Thread):
+    def __init__(self, cmd):
+        super().__init__()
+        self.cmd = cmd
+
+    def run(self):
+        print("Running: " + self.cmd)
+        subprocess.run(self.cmd)
+
+
+class NotepadIO:
+    @staticmethod
+    def query(name, content):
+        file_name = os.getcwd() + "\\" + name + ".txt"
+        file = open(file_name, "w")
+        file.write(content)
+        file.close()
+        RunCMDThead("notepad.exe " + file_name).start()
+        time.sleep(0.1)
+        pyautogui.press("end")
+        while GetWindowText(GetForegroundWindow()).split(" ")[-1] == "Notepad":
+            time.sleep(0.5)
+        return open(file_name, "r").read()
+
+
+class AlarmClock:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.alarms = []
+        self.alarm_thread = AlarmClock.AlarmThread(self)
+        self.alarm_thread.start()
+
+    class AlarmThread(threading.Thread):
+        def __init__(self, alarm_clock):
+            super().__init__()
+            self.alarm_clock = alarm_clock
+
+        def run(self):
+            while True:
+                time.sleep(1)
+                self.alarm_clock.lock.acquire()
+                alarms = self.alarm_clock.alarms
+                if len(alarms) > 0 and alarms[0][0] < datetime.today():
+                    print("u should see a toast")
+                    print(alarms[0][1], alarms[0][2])
+                    toast = ToastNotifier()
+                    if alarms[0][1] == "":
+                        alarms[0][1] += "Alarm"
+                    if alarms[0][2] == "":
+                        alarms[0][2] += "Alarm"
+                    toast.show_toast(alarms[0][1], alarms[0][2])
+                    self.alarm_clock.alarms = alarms[1:]
+                self.alarm_clock.lock.release()
+
+    class SetAlarmThread(threading.Thread):
+        def __init__(self, alarm_clock, q):
+            super().__init__()
+            self.alarm_clock = alarm_clock
+            self.q = q
+
+        def run(self):
+            f = NotepadIO.query(self.q, "Time: \nName: \nInfo: ")
+            time_text, alarm_name = f.split("\n")[:2]
+            time_text = "".join(time_text.split(" ")[1:])
+            alarm_name = "".join(alarm_name.split(" ")[1:])
+            alarm_info = f.split("\n")[2:]
+            alarm_info = "".join(("\n".join(alarm_info)).split(" ")[1:])
+
+            # alarm time : can either provide delta or actual time
+            # delta ex: +15m, +3h5m
+            # actual ex: 3:10pm, 9:00am 2/15
+            alarm_time = datetime.today()
+            if time_text[0] == "+":
+                ptr = 1
+                cur = 0
+                while ptr < len(time_text):
+                    while time_text[ptr] not in ['m', 'h', 'd', 's']:
+                        cur = 10 * cur + int(time_text[ptr])
+                        ptr += 1
+                    alarm_time += timedelta(seconds=cur) * {'s': 1, 'm': 60, 'h': 3600, 'd': 86400}[time_text[ptr]]
+                    ptr += 1
+            else:
+                alarm_time = alarm_time.replace(second=0, microsecond=0)
+                if len(time_text.split(" ")) == 2:
+                    # M/D format
+                    alarm_time = alarm_time.replace(day=int(time_text.split(" ")[1].split("/")[1]))
+                    alarm_time = alarm_time.replace(month=int(time_text.split(" ")[1].split("/")[0]))
+                # [h]h:mm<am/pm> format
+                alarm_time = alarm_time.replace(hour=int(time_text.split(" ")[0].split(":")[0]))
+                alarm_time = alarm_time.replace(minute=int(time_text.split(" ")[0].split(":")[1][:2]))
+                if time_text.split(" ")[0].split(":")[1][2] == "p":
+                    alarm_time += timedelta(hours=12)
+
+            if alarm_time < datetime.today():
+                alarm_time += timedelta(days=1)
+
+            print("Alarm set for " + str(alarm_time))
+
+            self.alarm_clock.lock.acquire()
+            self.alarm_clock.alarms.append([alarm_time, alarm_name, alarm_info])
+            self.alarm_clock.alarms = sorted(self.alarm_clock.alarms)
+            self.alarm_clock.lock.release()
+
+    def add_alarm(self):
+        AlarmClock.SetAlarmThread(self, "Set_an_alarm!").start()
 
 
 class KeyHandler:
@@ -18,8 +130,8 @@ class KeyHandler:
         self.modifiers = {"Capital", "F13", "F14"}
         self.curr_mods = set()
         self.m_thread = None
-        self.m_spd = [0, 0]
         self.m_cmps = set()
+        self.alarm_clock = AlarmClock()
 
         press = self.press
         mouse_add = self.mouse_add
@@ -73,7 +185,10 @@ class KeyHandler:
                 "Y": [press, ["shift", "end"]],
                 "H": [press, ["shift", "home"]],
                 "R": [pyautogui.mouseDown, []],
-            })
+            }),
+            frozenset(["F14"]): ddict(lambda: default, {
+                "A": [self.alarm_clock.add_alarm, []]
+            }),
         })
 
         self.binds_up = ddict(lambda: ddict(lambda: default), {
