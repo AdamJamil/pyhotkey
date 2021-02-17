@@ -26,16 +26,20 @@ class RunCMDThead(threading.Thread):
 class NotepadIO:
     @staticmethod
     def query(name, content):
+        NotepadIO.show(name, content)
+        time.sleep(0.1)
+        pyautogui.press("end")
+        while GetWindowText(GetForegroundWindow()).split(" ")[-1] == "Notepad":
+            time.sleep(0.5)
+        return open(os.getcwd() + "\\" + name + ".txt", "r").read()
+
+    @staticmethod
+    def show(name, content):
         file_name = os.getcwd() + "\\" + name + ".txt"
         file = open(file_name, "w")
         file.write(content)
         file.close()
         RunCMDThead("notepad.exe " + file_name).start()
-        time.sleep(0.1)
-        pyautogui.press("end")
-        while GetWindowText(GetForegroundWindow()).split(" ")[-1] == "Notepad":
-            time.sleep(0.5)
-        return open(file_name, "r").read()
 
 
 class AlarmClock:
@@ -44,6 +48,32 @@ class AlarmClock:
         self.alarms = []
         self.alarm_thread = AlarmClock.AlarmThread(self)
         self.alarm_thread.start()
+
+    def show_alarms(self):
+        alarms_text = ""
+        label = ""
+        last_day = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=-1)
+        for i, alarm in enumerate(self.alarms):
+            alarm_time = alarm[0]
+            if alarm_time > last_day + timedelta(days=1):
+                last_day = alarm_time.replace(hour=0, minute=0, second=0, microsecond=0)
+                if last_day <= datetime.today():
+                    label = "[today]"
+                elif last_day <= datetime.today() + timedelta(days=1):
+                    label = "[tomorrow]"
+                else:
+                    label = "[" + str(last_day.month) + "/" + str(last_day.day) + "]"
+                alarms_text += label + "\n"
+            alarms_text += "\t[" + str(i+1) + "] " + str(alarm_time.strftime("%I:%M%p"))
+            if alarm[1] != "":
+                alarms_text += ": " + alarm[1]
+            alarms_text += "\n"
+            if alarm[2] != "":
+                alarms_text += "\t\t" + alarm[2].replace("\n", "\n\t\t") + "\n"
+        NotepadIO.show("Alarms", alarms_text)
+
+        # you are allowed to edit the alarms
+            # [R]
 
     class AlarmThread(threading.Thread):
         def __init__(self, alarm_clock):
@@ -57,7 +87,6 @@ class AlarmClock:
                 alarms = self.alarm_clock.alarms
                 if len(alarms) > 0 and alarms[0][0] < datetime.today():
                     print("u should see a toast")
-                    print(alarms[0][1], alarms[0][2])
                     toast = ToastNotifier()
                     if alarms[0][1] == "":
                         alarms[0][1] += "Alarm"
@@ -77,18 +106,18 @@ class AlarmClock:
             f = NotepadIO.query(self.q, "Time: \nName: \nInfo: ")
             time_text, alarm_name = f.split("\n")[:2]
             time_text = "".join(time_text.split(" ")[1:])
-            alarm_name = "".join(alarm_name.split(" ")[1:])
+            alarm_name = " ".join(alarm_name.split(" ")[1:])
             alarm_info = f.split("\n")[2:]
-            alarm_info = "".join(("\n".join(alarm_info)).split(" ")[1:])
+            alarm_info = " ".join(("\n".join(alarm_info)).split(" ")[1:])
 
             # alarm time : can either provide delta or actual time
             # delta ex: +15m, +3h5m
             # actual ex: 3:10pm, 9:00am 2/15
-            alarm_time = datetime.today()
+            alarm_time = datetime.today().replace(microsecond=0)
             if time_text[0] == "+":
                 ptr = 1
-                cur = 0
                 while ptr < len(time_text):
+                    cur = 0
                     while time_text[ptr] not in ['m', 'h', 'd', 's']:
                         cur = 10 * cur + int(time_text[ptr])
                         ptr += 1
@@ -103,7 +132,7 @@ class AlarmClock:
                 # [h]h:mm<am/pm> format
                 alarm_time = alarm_time.replace(hour=int(time_text.split(" ")[0].split(":")[0]))
                 alarm_time = alarm_time.replace(minute=int(time_text.split(" ")[0].split(":")[1][:2]))
-                if time_text.split(" ")[0].split(":")[1][2] == "p":
+                if time_text.split(" ")[0].split(":")[1][2] == "p" and alarm_time.hour != 12:
                     alarm_time += timedelta(hours=12)
 
             if alarm_time < datetime.today():
@@ -126,6 +155,7 @@ class KeyHandler:
         pyautogui.FAILSAFE = False
 
         self.last_press = time.time()
+        self.last_esc = time.time()
         self.rep = 1
         self.modifiers = {"Capital", "F13", "F14"}
         self.curr_mods = set()
@@ -187,7 +217,8 @@ class KeyHandler:
                 "R": [pyautogui.mouseDown, []],
             }),
             frozenset(["F14"]): ddict(lambda: default, {
-                "A": [self.alarm_clock.add_alarm, []]
+                "A": [self.alarm_clock.add_alarm, []],
+                "V": [self.alarm_clock.show_alarms, []],
             }),
         })
 
@@ -217,9 +248,13 @@ class KeyHandler:
                 self.binds_down[key][modifier] = [self.curr_mods.add, [modifier]]
                 self.binds_up[key][modifier] = [self.curr_mods.remove, [modifier]]
 
-        # special reset
+        # soft reset
         for key in self.binds_up.keys():
             self.binds_up[key]["Capital"] = [self.reset, []]
+
+        # hard reset check (double press esc)
+        for key in self.binds_down.keys():
+            self.binds_down[key]["Escape"] = [self.esc_check, []]
 
     def press(self, *keys):
         for _ in range(self.rep):
@@ -235,6 +270,23 @@ class KeyHandler:
         if self.m_thread is not None:
             self.m_thread.join()
         self.curr_mods.remove("Capital")
+        return True
+
+    def hard_reset(self):
+        print("wtf")
+        self.last_press = time.time()
+        self.last_esc = time.time()
+        self.rep = 1
+        self.curr_mods.clear()
+        self.m_cmps.clear()
+        if self.m_thread is not None:
+            self.m_thread.join()
+        self.m_thread = None
+
+    def esc_check(self):
+        if time.time() - self.last_esc < 0.5:
+            self.hard_reset()
+        self.last_esc = time.time()
         return True
 
     def mouse_move(self):
@@ -255,15 +307,21 @@ class KeyHandler:
                 pyautogui.move(vx / mag, vy / mag)
 
     def mouse_add(self, *vel):
+        lock = threading.Lock()
+        lock.acquire()
         if not self.m_cmps:
             self.m_thread = threading.Thread(target=self.mouse_move)
             self.m_thread.start()
         self.m_cmps.add(vel)
+        lock.release()
 
     def mouse_remove(self, *vel):
+        lock = threading.Lock()
+        lock.acquire()
         self.m_cmps.remove(vel)
         if not self.m_cmps:
             self.m_thread.join()
+        lock.release()
 
     def key_down(self, event):
         if time.time() - self.last_press < 0.001:
