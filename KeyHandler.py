@@ -41,10 +41,6 @@ class KeyHandler:
                 "O": [press, ["ctrl", "right"]],
                 "Y": [press, ["end"]],
                 "H": [press, ["home"]],
-                "E": [mouse_add, [0, -1]],
-                "S": [mouse_add, [-1, 0]],
-                "D": [mouse_add, [0, 1]],
-                "F": [mouse_add, [1, 0]],
                 "R": [pyautogui.mouseDown, []],
                 "Oem_3": [press, ["capslock"]],
             }),
@@ -96,6 +92,18 @@ class KeyHandler:
                 "R": [pyautogui.mouseUp, []],
             })
         })
+
+        # mouse movement
+        move_map = {
+            "E": [0, -1],
+            "S": [-1, 0],
+            "D": [0, 1],
+            "F": [1, 0],
+        }
+        for key in filter(lambda x: "Capital" in x, self.binds_down.keys()):
+            for char in move_map.keys():
+                self.binds_down[key][char] = [mouse_add, move_map[char]]
+                self.binds_up[key][char] = [mouse_remove, move_map[char]]
 
         # allow for repetition
         for i in range(1, 10):
