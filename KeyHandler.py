@@ -128,11 +128,11 @@ class KeyHandler:
         if time.time() - self.last_press < 0.001:
             return True
         value = self.binds_down[frozenset(self.curr_mods)][event.Key]
-        return value[0](*value[1]) is not None
+        return type(value[0](*value[1])) == bool
 
     def key_up(self, event):
         value = self.binds_up[frozenset(self.curr_mods)][event.Key]
-        return value[0](*value[1]) is not None
+        return type(value[0](*value[1])) == bool
 
     def press(self, *keys):
         for _ in range(self.rep):

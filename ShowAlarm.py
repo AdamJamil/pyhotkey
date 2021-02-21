@@ -35,47 +35,4 @@ class ShowAlarm(threading.Thread):
             return
 
         print("Updating alarms")
-        self.alarm_clock.alarms.clear()
-        curr_label = "[today]"
-        lines = update.split("\n")
-        ptr = 0
-        while ptr < len(lines):
-            line = lines[ptr]
-            if len(line) == 0:
-                ptr += 1
-                pass
-            elif line[0] == "[":
-                ptr += 1
-                curr_label = line.strip()
-            elif line[1] == "[":
-                if line[2] == "-":
-                    ptr += 1
-                    while ptr < len(lines) and len(lines[ptr]) > 1 and "[" in lines[ptr][:2]:
-                        ptr += 1
-                    continue
-
-                alarm_time_text = ":".join(line.split(" ")[1].split(":")[:2])
-                alarm_time = datetime.strptime(alarm_time_text, "%I:%M%p")
-                ref_time = datetime.now()
-                day = curr_label[1:-1]
-                if day == "tomorrow":
-                    ref_time += timedelta(days=1)
-                elif day != "today":
-                    ref_time = ref_time.replace(month=int(day.split("/")[0]), day=int(day.split("/")[1]))
-
-                alarm_time = alarm_time.replace(month=ref_time.month, day=ref_time.day, year=ref_time.year)
-
-                desc = ""
-                if len(line.split(":")) >= 3:
-                    desc = ":".join(line.split(":")[2:])
-
-                info = ""
-                ptr += 1
-                while ptr < len(lines) and len(lines[ptr]) >= 2 and lines[ptr][:2] == "\t\t":
-                    info += lines[ptr][2:] + "\n"
-                    ptr += 1
-                if len(info) > 0:
-                    info = info[:-1]
-                self.alarm_clock.alarms.append([alarm_time, desc, info])
-
-        self.alarm_clock.alarms = sorted(self.alarm_clock.alarms)
+        self.alarm_clock.load_alarms(update)
