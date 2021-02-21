@@ -10,7 +10,7 @@ class AlarmClock:
     def __init__(self):
         self.lock = threading.Lock()
         self.alarms = []
-        file_name = os.path.join(pathlib.Path(__file__).parent.absolute(), "IO", "Alarms.txt")
+        file_name = os.path.join(pathlib.Path(__file__).parent.absolute(), "IO", "data.txt")
         if os.path.exists(file_name):
             self.load_alarms(open(file_name, "r").read())
         self.alarm_thread = AlarmClock.AlarmThread(self)
@@ -19,6 +19,7 @@ class AlarmClock:
     class AlarmThread(threading.Thread):
         def __init__(self, alarm_clock):
             super().__init__()
+            self.daemon = True
             self.alarm_clock = alarm_clock
 
         def run(self):

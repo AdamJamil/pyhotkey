@@ -7,6 +7,10 @@ import pyautogui
 import time
 import threading
 import math
+from itertools import chain, combinations
+import pathlib
+import os
+import sys
 
 
 class KeyHandler:
@@ -76,15 +80,14 @@ class KeyHandler:
                 "A": [SetAlarm, [self.alarm_clock]],
                 "V": [ShowAlarm, [self.alarm_clock]],
             }),
+            frozenset(["Capital", "F13", "F14"]) : ddict(lambda: default, {
+                "Q": [self.exit, []]
+            })
         })
 
         self.binds_up = ddict(lambda: ddict(lambda: default), {
             frozenset(): ddict(lambda: default, {}),
             frozenset(["Capital"]): ddict(lambda: default, {
-                "E": [mouse_remove, [0, -1]],
-                "S": [mouse_remove, [-1, 0]],
-                "D": [mouse_remove, [0, 1]],
-                "F": [mouse_remove, [1, 0]],
                 "R": [pyautogui.mouseUp, []],
             }),
             frozenset(["F13"]): ddict(lambda: default, {}),
@@ -92,6 +95,14 @@ class KeyHandler:
                 "R": [pyautogui.mouseUp, []],
             })
         })
+
+        # add default keys
+        mods_list = list(self.modifiers)
+        for key in chain.from_iterable(combinations(mods_list, r) for r in range(len(mods_list) + 1)):
+            if frozenset(key) not in self.binds_down:
+                self.binds_down[frozenset(key)] = ddict(lambda: default)
+            if frozenset(key) not in self.binds_up:
+                self.binds_up[frozenset(key)] = ddict(lambda: default)
 
         # mouse movement
         move_map = {
@@ -200,3 +211,12 @@ class KeyHandler:
         if not self.m_cmps:
             self.m_thread.join()
         lock.release()
+
+    def exit(self):
+        print("go fuck yourself")
+        root_dir = pathlib.Path(__file__).parent.absolute()
+        file_name = os.path.join(root_dir, "IO", "data.txt")
+        file = open(file_name, "w")
+        file.write(ShowAlarm.get_alarms_text(self.alarm_clock.alarms))
+        file.close()
+        exit()

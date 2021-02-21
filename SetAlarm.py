@@ -7,6 +7,7 @@ class SetAlarm(threading.Thread):
     def __init__(self, alarm_clock):
         super().__init__()
         self.alarm_clock = alarm_clock
+        self.daemon = True
         self.start()
 
     def run(self):

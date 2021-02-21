@@ -10,6 +10,7 @@ import pathlib
 class RunCMDThead(threading.Thread):
     def __init__(self, cmd):
         super().__init__()
+        self.daemon = True
         self.cmd = cmd
 
     def run(self):
@@ -30,9 +31,15 @@ def query(name, content):
 
 
 def show(name, content):
+    write(name, content)
+    root_dir = pathlib.Path(__file__).parent.absolute()
+    file_name = os.path.join(root_dir, "IO", name + ".txt")
+    RunCMDThead("notepad.exe " + file_name).start()
+
+
+def write(name, content):
     root_dir = pathlib.Path(__file__).parent.absolute()
     file_name = os.path.join(root_dir, "IO", name + ".txt")
     file = open(file_name, "w")
     file.write(content)
     file.close()
-    RunCMDThead("notepad.exe " + file_name).start()
