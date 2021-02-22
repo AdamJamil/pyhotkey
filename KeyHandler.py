@@ -26,6 +26,7 @@ class KeyHandler:
         self.m_thread = None
         self.m_cmps = set()
         self.alarm_clock = AlarmClock()
+        self.done = False
 
         default = [lambda: True, []]
         press = self.press
@@ -80,7 +81,7 @@ class KeyHandler:
                 "A": [SetAlarm, [self.alarm_clock]],
                 "V": [ShowAlarm, [self.alarm_clock]],
             }),
-            frozenset(["Capital", "F13", "F14"]) : ddict(lambda: default, {
+            frozenset(["Capital", "F13", "F14"]): ddict(lambda: default, {
                 "Q": [self.exit, []]
             })
         })
@@ -131,7 +132,7 @@ class KeyHandler:
         for key in self.binds_up.keys():
             self.binds_up[key]["Capital"] = [self.reset, []]
 
-        # hard reset check (double press esc)es
+        # hard reset check (double press esc)
         for key in self.binds_down.keys():
             self.binds_down[key]["Escape"] = [self.esc_check, []]
 
@@ -213,10 +214,8 @@ class KeyHandler:
         lock.release()
 
     def exit(self):
-        print("go fuck yourself")
-        root_dir = pathlib.Path(__file__).parent.absolute()
-        file_name = os.path.join(root_dir, "IO", "data.txt")
-        file = open(file_name, "w")
-        file.write(ShowAlarm.get_alarms_text(self.alarm_clock.alarms))
-        file.close()
+        if self.done:
+            return
+        self.done = True
+        self.alarm_clock.save()
         exit()

@@ -51,4 +51,5 @@ class SetAlarm(threading.Thread):
         self.alarm_clock.lock.acquire()
         self.alarm_clock.alarms.append([alarm_time, alarm_name, alarm_info])
         self.alarm_clock.alarms = sorted(self.alarm_clock.alarms)
+        self.alarm_clock.save()
         self.alarm_clock.lock.release()

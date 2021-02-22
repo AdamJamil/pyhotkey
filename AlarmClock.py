@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import time
 import pathlib
 import os
+from ShowAlarm import ShowAlarm
 
 
 class AlarmClock:
@@ -83,3 +84,11 @@ class AlarmClock:
                 self.alarms.append([alarm_time, desc, info])
 
         self.alarms = sorted(self.alarms)
+        self.save()
+
+    def save(self):
+        root_dir = pathlib.Path(__file__).parent.absolute()
+        file_name = os.path.join(root_dir, "IO", "data.txt")
+        file = open(file_name, "w")
+        file.write(ShowAlarm.get_alarms_text(self.alarms))
+        file.close()
