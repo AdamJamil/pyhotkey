@@ -73,6 +73,7 @@ class AlarmClock:
                 desc = ""
                 if len(line.split(":")) >= 3:
                     desc = ":".join(line.split(":")[2:])
+                desc = desc.strip()
 
                 info = ""
                 ptr += 1
