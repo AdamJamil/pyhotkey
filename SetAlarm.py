@@ -13,7 +13,7 @@ class SetAlarm(threading.Thread):
     def run(self):
         f = NotepadIO.query("Set_an_alarm!", "Time: \nName: \nInfo: ")
         time_text, alarm_name = f.split("\n")[:2]
-        time_text = "".join(time_text.split(" ")[1:])
+        time_text = " ".join(time_text.split(" ")[1:])
         alarm_name = " ".join(alarm_name.split(" ")[1:])
         alarm_info = f.split("\n")[2:]
         alarm_info = " ".join(("\n".join(alarm_info)).split(" ")[1:])
