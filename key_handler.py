@@ -1,16 +1,16 @@
 from collections import defaultdict as ddict
 from functools import partial
-from SetAlarm import SetAlarm
-from ShowAlarm import ShowAlarm
-from AlarmClock import AlarmClock
+from alarm_clock import AlarmClock
 import pyautogui
 import time
 import threading
 import math
 from itertools import chain, combinations
-import pathlib
+import cli
 import os
 import sys
+import pathlib
+import subprocess
 
 
 class KeyHandler:
@@ -78,11 +78,11 @@ class KeyHandler:
                 "R": [pyautogui.mouseDown, []],
             }),
             frozenset(["F14"]): ddict(lambda: default, {
-                "A": [SetAlarm, [self.alarm_clock]],
-                "V": [ShowAlarm, [self.alarm_clock]],
+                "C": [cli.CLIServer, [self.alarm_clock]]
             }),
             frozenset(["Capital", "F13", "F14"]): ddict(lambda: default, {
-                "Q": [self.exit, []]
+                "Q": [self.exit, []],
+                "R": [self.restart, []],
             })
         })
 
@@ -219,3 +219,9 @@ class KeyHandler:
         self.done = True
         self.alarm_clock.save()
         exit()
+
+    def restart(self):
+        root_dir = pathlib.Path(__file__).parent.absolute()
+        detached_process = 0x00000008
+        subprocess.Popen([sys.executable, os.path.join(root_dir, "main.py")], creationflags=detached_process)
+        self.exit()

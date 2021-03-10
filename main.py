@@ -1,11 +1,11 @@
 import PyHook3
 import pythoncom
-from KeyHandler import KeyHandler
+from key_handler import KeyHandler
 import atexit
-import time
 import win32api
 import win32con
 import signal
+import pathlib
 
 
 def main():
