@@ -2,7 +2,7 @@ import subprocess
 import threading
 
 
-class RunCMDThead(threading.Thread):
+class RunCMDThread(threading.Thread):
     def __init__(self, cmd, **kwargs):
         super().__init__()
         self.daemon = True

@@ -12,4 +12,4 @@ def show(content, name):
     file = open(file_name, "w")
     file.write(content)
     file.close()
-    run_cmd.RunCMDThead(text_editor_path + " " + file_name)
+    run_cmd.RunCMDThread(text_editor_path + " " + file_name)

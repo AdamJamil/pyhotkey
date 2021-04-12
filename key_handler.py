@@ -7,6 +7,7 @@ import threading
 import math
 from itertools import chain, combinations
 import cli
+from run_cmd import RunCMDThread
 import os
 import sys
 import pathlib
@@ -214,6 +215,7 @@ class KeyHandler:
         lock.release()
 
     def exit(self):
+        time.sleep(0.5)
         if self.done:
             return
         self.done = True
@@ -221,7 +223,7 @@ class KeyHandler:
         exit()
 
     def restart(self):
-        root_dir = pathlib.Path(__file__).parent.absolute()
-        detached_process = 0x00000008
-        subprocess.Popen([sys.executable, os.path.join(root_dir, "main.py")], creationflags=detached_process)
-        self.exit()
+        RunCMDThread("CScript \"C:\\Users\\adama\\AppData\\Roaming\\Microsoft\\Windows\\Start "
+                     "Menu\\Programs\\Startup\\launch_script.vbs\"")
+        t = threading.Thread(target=self.exit)
+        t.start()

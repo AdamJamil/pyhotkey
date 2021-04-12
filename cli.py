@@ -1,6 +1,6 @@
 import threading
 import socket
-from run_cmd import RunCMDThead
+from run_cmd import RunCMDThread
 from alarm_clock import AlarmClock
 import output
 import pathlib
@@ -14,7 +14,7 @@ class CLIServer(threading.Thread):
         self.alarm_clock: AlarmClock = alarm_clock
         self.start()
         root_dir = pathlib.Path(__file__).parent.absolute()
-        RunCMDThead("start /wait python " + os.path.join(root_dir, "cli.py"), shell=True)
+        RunCMDThread("start /wait python " + os.path.join(root_dir, "cli.py"), shell=True)
 
     def run(self):
         s = socket.socket()  # Create a socket object
