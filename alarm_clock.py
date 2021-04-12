@@ -189,10 +189,14 @@ class AlarmClock:
         self.events.sort()
         self.update()
 
+    def remove_(self, pos):
+        n = self.events.pop(int(pos) - 1).name
+        self.update()
+        return n
+
     def remove(self, pos):
         try:
-            ret = "Removed event " + self.events.pop(int(pos) - 1).name + " :D\n"
-            self.update()
+            ret = "Removed event " + self.remove_(pos) + " :D\n"
             return ret
         except (IndexError, ValueError):
             return "Fuck off moron :D\n"
@@ -275,6 +279,31 @@ class AlarmClock:
                     self.add(Event(time=curr, name=" ".join(line[1:]), info="bottom text", options=Event.no_opt))
             return "Successfully set " + str(num_events) + " events :D\n"
         except (IndexError, ValueError):
+            return "Fuck off moron :D\n"
+
+    def delay(self, lines):
+        self.events.sort()
+        try:
+            delay = duration(lines[0][1])
+            self.events[0].time += delay
+            if self.events[0].end:
+                self.events[0].end += delay
+            else:
+                self.update()
+                return "Successfully delayed your day! :D\n"
+            for i in range(len(self.events) - 1):
+                if self.events[i + 1].time == self.events[i].end:
+                    self.events[i + 1].time += delay
+                    if self.events[i + 1]:
+                        self.events[i + 1].end += delay
+                    else:
+                        break
+                else:
+                    break
+            self.update()
+            return "Successfully delayed your day! :D\n"
+        except:
+            traceback.print_exc()
             return "Fuck off moron :D\n"
 
     def load(self):

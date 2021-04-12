@@ -49,6 +49,8 @@ class CLIServer(threading.Thread):
                     send.append(self.alarm_clock.remove(lines[0][1]))
                 elif lines[0][0] == "c":
                     send.append(self.alarm_clock.chain(lines))
+                elif lines[0][0] == "d":
+                    send.append(self.alarm_clock.delay(lines))
                 else:
                     send.append("wtf did u jsut say to me\n")
 
