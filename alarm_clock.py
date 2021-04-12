@@ -261,7 +261,7 @@ class AlarmClock:
                 if line[0][0] != "-":
                     name = " ".join(line[:-1])
                     event_dur = duration(line[-1])
-                    self.add(Event(curr, curr + event_dur, name, line[-1], {
+                    self.add(Event(curr, curr + event_dur, name, "", {
                         "s_remind": 0,
                         "s_remind_list": [],
                         "e_remind": 0,
@@ -309,12 +309,12 @@ class AlarmClock:
             return ""
 
         last_label = self.events[0].day_string()
-        events_string = "[" + last_label + "]\n" + self.events[0].schedule_view() + "\n\n"
+        events_string = "[" + last_label + "]\n" + self.events[0].schedule_view() + "\n"
 
         for event in self.events[1:]:
             if event.day_string() != last_label:
-                events_string += "[" + event.day_string() + "]\n"
+                events_string += "\n[" + event.day_string() + "]\n"
             last_label = event.day_string()
-            events_string += event.schedule_view() + "\n\n"
+            events_string += event.schedule_view() + "\n"
 
         return events_string
