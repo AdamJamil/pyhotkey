@@ -7,7 +7,9 @@ import threading
 import math
 from itertools import chain, combinations
 import cli
+import pywinauto.keyboard
 from run_cmd import RunCMDThread
+from win32gui import GetWindowText, GetForegroundWindow
 import os
 import sys
 import pathlib
@@ -147,7 +149,21 @@ class KeyHandler:
         value = self.binds_up[frozenset(self.curr_mods)][event.Key]
         return type(value[0](*value[1])) == bool
 
+    pywinmap = {
+        "{": "+[",
+        "}": "+]",
+        "(": "{(}",
+        ")": "{)}",
+        "+": "{+}",
+        "_": "{_}",
+    }
+
     def press(self, *keys):
+        if "xonsh" in GetWindowText(GetForegroundWindow()) and keys[0] in self.pywinmap.keys():
+            self.last_press = time.time()
+            pywinauto.keyboard.send_keys(self.pywinmap[keys[0]], pause=0)
+            self.last_press = time.time()
+            return
         for _ in range(self.rep):
             self.last_press = time.time()
             for k in keys:
