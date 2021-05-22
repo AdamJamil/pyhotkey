@@ -294,7 +294,7 @@ class AlarmClock:
             for i in range(len(self.events) - 1):
                 if self.events[i + 1].time == self.events[i].end:
                     self.events[i + 1].time += delay
-                    if self.events[i + 1]:
+                    if self.events[i + 1].end:
                         self.events[i + 1].end += delay
                     else:
                         break

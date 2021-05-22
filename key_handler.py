@@ -10,6 +10,7 @@ import cli
 import pywinauto.keyboard
 from run_cmd import RunCMDThread
 from win32gui import GetWindowText, GetForegroundWindow
+import screeninfo
 import os
 import sys
 import pathlib
@@ -49,8 +50,8 @@ class KeyHandler:
                 "O": [press, ["ctrl", "right"]],
                 "Y": [press, ["end"]],
                 "H": [press, ["home"]],
-                "R": [pyautogui.mouseDown, []],
                 "Oem_3": [press, ["capslock"]],
+                "C": [cli.CLIServer, [self.alarm_clock]]
             }),
             frozenset(["F13"]): ddict(lambda: default, {
                 "A": [press, ["["]],
@@ -78,10 +79,14 @@ class KeyHandler:
                 "O": [press, ["ctrl", "shift", "right"]],
                 "Y": [press, ["shift", "end"]],
                 "H": [press, ["shift", "home"]],
-                "R": [pyautogui.mouseDown, []],
             }),
             frozenset(["F14"]): ddict(lambda: default, {
-                "C": [cli.CLIServer, [self.alarm_clock]]
+                "R": [pyautogui.mouseDown, []],
+                "H": [self.mouse_toggle_screen, []],
+            }),
+            frozenset(["F13", "F14"]): ddict(lambda: default, {
+                "R": [pyautogui.mouseDown, []],
+                "H": [self.mouse_toggle_screen, []],
             }),
             frozenset(["Capital", "F13", "F14"]): ddict(lambda: default, {
                 "Q": [self.exit, []],
@@ -91,11 +96,11 @@ class KeyHandler:
 
         self.binds_up = ddict(lambda: ddict(lambda: default), {
             frozenset(): ddict(lambda: default, {}),
-            frozenset(["Capital"]): ddict(lambda: default, {
+            frozenset(["F14"]): ddict(lambda: default, {
                 "R": [pyautogui.mouseUp, []],
             }),
             frozenset(["F13"]): ddict(lambda: default, {}),
-            frozenset(["Capital", "F13"]): ddict(lambda: default, {
+            frozenset(["F14", "F13"]): ddict(lambda: default, {
                 "R": [pyautogui.mouseUp, []],
             })
         })
@@ -115,10 +120,16 @@ class KeyHandler:
             "D": [0, 1],
             "F": [1, 0],
         }
-        for key in filter(lambda x: "Capital" in x, self.binds_down.keys()):
+        for key in filter(lambda x: "F14" in x, self.binds_down.keys()):
             for char in move_map.keys():
                 self.binds_down[key][char] = [mouse_add, move_map[char]]
                 self.binds_up[key][char] = [mouse_remove, move_map[char]]
+
+        jump_keys = [["U", "I", "O", "P"], ["J", "K", "L", "Oem_1"], ["M", "Oem_Comma", "Oem_Period", "Oem_2"]]
+        jump_map = {key: [y, x] for x, row in enumerate(jump_keys) for y, key in enumerate(row)}
+        for key in filter(lambda x: "F14" in x, self.binds_down.keys()):
+            for char in jump_map.keys():
+                self.binds_down[key][char] = [self.mouse_jump, jump_map[char]]
 
         # allow for repetition
         for i in range(1, 10):
@@ -131,9 +142,10 @@ class KeyHandler:
                 self.binds_down[key][modifier] = [self.curr_mods.add, [modifier]]
                 self.binds_up[key][modifier] = [self.curr_mods.remove, [modifier]]
 
-        # soft reset
+        # soft and mouse reset
         for key in self.binds_up.keys():
             self.binds_up[key]["Capital"] = [self.reset, []]
+            self.binds_up[key]["F14"] = [self.mouse_reset, []]
 
         # hard reset check (double press esc)
         for key in self.binds_down.keys():
@@ -174,10 +186,14 @@ class KeyHandler:
 
     def reset(self):
         self.rep = 1
+        self.curr_mods.remove("Capital")
+        return True
+
+    def mouse_reset(self):
         self.m_cmps.clear()
         if self.m_thread is not None:
             self.m_thread.join()
-        self.curr_mods.remove("Capital")
+        self.curr_mods.remove("F14")
         return True
 
     def hard_reset(self):
@@ -229,6 +245,24 @@ class KeyHandler:
         if not self.m_cmps:
             self.m_thread.join()
         lock.release()
+
+    def curr_monitor(self):
+        pos = pyautogui.position()
+        for m in screeninfo.get_monitors():
+            if m.x <= pos[0] < m.x + m.width and m.y <= pos[1] < m.y + m.height:
+                return m
+
+    def mouse_jump(self, x, y):
+        m = self.curr_monitor()
+        pyautogui.moveTo(m.x + (x + 1) * m.width / 5, m.y + (y + 1) * m.height / 4)
+
+    def mouse_toggle_screen(self):
+        m = self.curr_monitor()
+        pos = pyautogui.position()
+        rel_x, rel_y = (pos[0] - m.x) / m.width, (pos[1 - m.y]) / m.height
+        monitors = screeninfo.get_monitors()
+        next_m = monitors[(monitors.index(m) + 1) % len(monitors)]
+        pyautogui.moveTo(next_m.x + rel_x * next_m.width, next_m.y + rel_y * next_m.height)
 
     def exit(self):
         time.sleep(0.5)
