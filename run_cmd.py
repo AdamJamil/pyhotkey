@@ -3,9 +3,9 @@ import threading
 
 
 class RunCMDThread(threading.Thread):
-    def __init__(self, cmd, **kwargs):
+    def __init__(self, cmd, daemon=True, **kwargs):
         super().__init__()
-        self.daemon = True
+        self.daemon = daemon
         self.cmd = cmd
         self.kwargs = kwargs
         self.start()

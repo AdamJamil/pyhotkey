@@ -12,6 +12,7 @@ from run_cmd import RunCMDThread
 from win32gui import GetWindowText, GetForegroundWindow
 import screeninfo
 import os
+import signal
 import sys
 import pathlib
 import subprocess
@@ -265,15 +266,15 @@ class KeyHandler:
         pyautogui.moveTo(next_m.x + rel_x * next_m.width, next_m.y + rel_y * next_m.height)
 
     def exit(self):
-        time.sleep(0.5)
         if self.done:
             return
         self.done = True
         self.alarm_clock.save()
-        exit()
+        pid = os.getpid()
+        thread = threading.Thread(target=lambda: (time.sleep(0.1), os.kill(pid, signal.SIGTERM)))
+        thread.start()
 
     def restart(self):
         RunCMDThread("CScript \"C:\\Users\\adama\\AppData\\Roaming\\Microsoft\\Windows\\Start "
-                     "Menu\\Programs\\Startup\\launch_script.vbs\"")
-        t = threading.Thread(target=self.exit)
-        t.start()
+                     "Menu\\Programs\\Startup\\launch_script.vbs\"", daemon=False)
+        self.exit()
