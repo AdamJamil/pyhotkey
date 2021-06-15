@@ -5,10 +5,14 @@ import atexit
 import win32api
 import win32con
 import signal
+import pyttsx3
 import pathlib
 
 
 def main():
+    speaker = pyttsx3.init()
+    speaker.say("gaming time")
+    speaker.runAndWait()
     hm = PyHook3.HookManager()
     handler = KeyHandler()
     hm.KeyDown = handler.key_down

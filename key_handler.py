@@ -260,8 +260,9 @@ class KeyHandler:
     def mouse_toggle_screen(self):
         m = self.curr_monitor()
         pos = pyautogui.position()
-        rel_x, rel_y = (pos[0] - m.x) / m.width, (pos[1 - m.y]) / m.height
+        rel_x, rel_y = (pos[0] - m.x) / m.width, (pos[1] - m.y) / m.height
         monitors = screeninfo.get_monitors()
+        print("gaming")
         next_m = monitors[(monitors.index(m) + 1) % len(monitors)]
         pyautogui.moveTo(next_m.x + rel_x * next_m.width, next_m.y + rel_y * next_m.height)
 

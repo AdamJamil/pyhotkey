@@ -11,6 +11,7 @@ import pickle
 import traceback
 from functools import total_ordering
 import output
+import pyttsx3
 
 
 def short_time_view(time: dt) -> str:
@@ -163,7 +164,13 @@ class AlarmThread(threading.Thread):
                 toast = ToastNotifier()
                 name = notifs[0].name if len(notifs[0].name) > 0 else "Event"
                 body = notifs[0].body if len(notifs[0].body) > 0 else "bottom text"
-                toast.show_toast(name, body)
+                thread1 = threading.Thread(target=lambda: (toast.show_toast(name, body)))
+                thread2 = threading.Thread(target=lambda: (
+                    self.alarm_clock.speaker.say(name),
+                    self.alarm_clock.speaker.runAndWait())
+                )
+                thread1.start()
+                thread2.start()
                 
                 if notifs[0].remove:
                     self.alarm_clock.events.remove(notifs[0].parent)
@@ -183,6 +190,7 @@ class AlarmClock:
             self.load()
         self.alarm_thread = AlarmThread(self)
         self.alarm_thread.start()
+        self.speaker = pyttsx3.init()
 
     def add(self, event):
         self.events.append(event)
