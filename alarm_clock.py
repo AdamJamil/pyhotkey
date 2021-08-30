@@ -1,5 +1,4 @@
 import threading
-from win10toast import ToastNotifier
 from datetime import datetime, timedelta
 from time import sleep
 import pathlib
@@ -11,7 +10,12 @@ import pickle
 import traceback
 from functools import total_ordering
 import output
-import pyttsx3
+
+import platform
+
+if platform.system() == "Windows":
+    import pyttsx3
+    from win10toast import ToastNotifier
 
 
 def short_time_view(time: dt) -> str:
@@ -153,7 +157,7 @@ class AlarmThread(threading.Thread):
         super().__init__()
         self.daemon = True
         self.alarm_clock = alarm_clock
-        
+
     def run(self):
         while True:
             sleep(1)
@@ -168,13 +172,13 @@ class AlarmThread(threading.Thread):
                 thread2 = threading.Thread(target=lambda: (
                     self.alarm_clock.speaker.say(name),
                     self.alarm_clock.speaker.runAndWait())
-                )
+                                           )
                 thread1.start()
                 thread2.start()
-                
+
                 if notifs[0].remove:
                     self.alarm_clock.events.remove(notifs[0].parent)
-                
+
                 self.alarm_clock.notifs = notifs[1:]
                 self.alarm_clock.save()
             self.alarm_clock.lock.release()
@@ -231,19 +235,19 @@ class AlarmClock:
                         info += " ".join(line[i:])
                         break
                     elif line[i] == "-s":
-                        if line[i+1][0] == "[":
-                            options["s_remind_list"] = [int(x) for x in line[i+1][1:-1].split(",")]
+                        if line[i + 1][0] == "[":
+                            options["s_remind_list"] = [int(x) for x in line[i + 1][1:-1].split(",")]
                         else:
-                            options["s_remind"] = int(line[i+1])
+                            options["s_remind"] = int(line[i + 1])
                         i += 2
                     elif line[i] == "-e":
-                        if line[i+1][0] == "[":
-                            options["e_remind_list"] = [int(x) for x in line[i+1][1:-1].split(",")]
+                        if line[i + 1][0] == "[":
+                            options["e_remind_list"] = [int(x) for x in line[i + 1][1:-1].split(",")]
                         else:
-                            options["e_remind"] = int(line[i+1])
+                            options["e_remind"] = int(line[i + 1])
                         i += 2
                     elif line[i] == "-d":
-                        date = line[i+1].split("/")
+                        date = line[i + 1].split("/")
                         month = int(date[0])
                         day = int(date[1])
                         year = start_time.year
