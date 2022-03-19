@@ -14,11 +14,18 @@ class CLIServer(threading.Thread):
         self.alarm_clock: AlarmClock = alarm_clock
         self.start()
         root_dir = pathlib.Path(__file__).parent.absolute()
-        RunCMDThread("start /wait python " + os.path.join(root_dir, "cli.py"), shell=True)
+        import subprocess
+
+        subprocess.call(
+            'python ' + os.path.join(root_dir, "cli.py"),
+            creationflags=subprocess.CREATE_NEW_CONSOLE
+        )
+        # RunCMDThread("start /wait python " + os.path.join(root_dir, "cli.py"), shell=True)
 
     def run(self):
         s = socket.socket()  # Create a socket object
-        s.bind((socket.gethostname(), 37156))
+        # s.bind((socket.gethostname(), 37156))
+        s.bind((socket.gethostname(), 4003))
 
         s.listen(5)
         c, addr = s.accept()
@@ -71,7 +78,8 @@ class CLIServer(threading.Thread):
 # client program
 def client():
     server_socket = socket.socket()
-    server_socket.connect((socket.gethostname(), 37156))
+    # server_socket.connect((socket.gethostname(), 37156))
+    server_socket.bind((socket.gethostname(), 4003))
 
     def read():
         x = input()

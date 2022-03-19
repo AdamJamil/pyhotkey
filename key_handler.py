@@ -36,7 +36,7 @@ class KeyHandler:
         self.last_press = time.time()
         self.last_esc = time.time()
         self.rep = 1
-        self.mods = ["Q", "F13", "F14"]
+        self.mods = ["F15", "F13", "F14"]
         self.curr_mods = set()
         self.m_thread = None
         self.m_cmps = set()
@@ -44,10 +44,8 @@ class KeyHandler:
         self.alarm_clock = AlarmClock() if platform.system() == "Windows" else None
         self.done = False
 
-        self.press("shift", "{")
-
         sbo = "Oem_4" if platform.system() == "Windows" else "["
-        sbc = "Oem_4" if platform.system() == "Windows" else "]"
+        sbc = "Oem_6" if platform.system() == "Windows" else "]"
         # cbo = "Oem_4" if platform.system() == "Windows" else "["
         # cbc = "Oem_4" if platform.system() == "Windows" else "["
 
@@ -180,7 +178,7 @@ class KeyHandler:
         print(event, self.curr_mods)
         return type(value[0](*value[1])) == bool
 
-    def darwin_intercept(self, event_type, event):
+    def darwin_intercept(self, _, event):
         temp = self.flag
         self.flag = True
         return event if temp else None
@@ -223,11 +221,13 @@ class KeyHandler:
         #     curr_mods = self.curr_mods
         #     for mod in curr_mods:
         #         pyautogui.keyUp(mod)
-        mp = {
-            "shift": Key.shift,
-            "backspace": Key.backspace,
-            "delete": Key.delete,
-        }
+
+        if platform.system() != "Windows":
+            mp = {
+                "shift": Key.shift,
+                "backspace": Key.backspace,
+                "delete": Key.delete,
+            }
         for _ in range(self.rep):
             self.last_press = time.time()
             for k in keys:

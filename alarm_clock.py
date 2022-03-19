@@ -5,7 +5,7 @@ import pathlib
 import os
 from datetime import datetime as dt
 from dataclasses import dataclass, field
-from typing import Iterable, Union
+from typing import Iterable, Union, Dict, List
 import pickle
 import traceback
 from functools import total_ordering
@@ -80,7 +80,7 @@ class Event:
     end: dt = None
     name: str = ""
     info: str = ""
-    options: dict[str, Union[int, list[int]]] = field(default_factory=lambda: {
+    options: Dict[str, Union[int, List[int]]] = field(default_factory=lambda: {
         "s_remind": 1,
         "s_remind_list": [],
         "e_remind": 0,
@@ -118,7 +118,7 @@ class Event:
 
         return day.strftime("%#m/%#d")
 
-    def parse(self) -> list[Notif]:
+    def parse(self) -> List[Notif]:
         notifs = [Notif(time=self.time, name=self.name, body=self.info)]
 
         def f(x: dt, y: Iterable[int], c: int) -> Iterable[Notif]:
@@ -342,6 +342,7 @@ class AlarmClock:
     def save(self):
         root_dir = pathlib.Path(__file__).parent.absolute()
         file_name = os.path.join(root_dir, "IO", "events")
+        print(file_name)
         with open(file_name, "wb") as f:
             pickle.dump(self.events, f)
 

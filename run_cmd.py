@@ -12,4 +12,4 @@ class RunCMDThread(threading.Thread):
 
     def run(self):
         print("Running: " + self.cmd)
-        subprocess.run(self.cmd, **self.kwargs)
+        print(subprocess.check_output(self.cmd, **self.kwargs))
