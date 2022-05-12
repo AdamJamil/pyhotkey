@@ -325,15 +325,6 @@ class KeyHandler:
                 pyautogui.move(vx / mag, vy / mag)
 
     def scroll_move(self):
-        if self.mods[1] in self.curr_mods:
-            time.sleep(0.01)
-            lock = threading.Lock()
-            lock.acquire()
-            vy = sum(self.s_cmps)
-            lock.release()
-            mag = -vy * 200
-            pyautogui.scroll(mag)
-
         while True:
             time.sleep(0.01)
             lock = threading.Lock()
