@@ -14,6 +14,7 @@ import pathlib
 import subprocess
 import pyautogui
 import screeninfo
+from codeforces import put_code
 
 import platform
 
@@ -39,7 +40,9 @@ class KeyHandler:
         self.mods = ["F15", "F13", "F14"]
         self.curr_mods = set()
         self.m_thread = None
+        self.s_thread = None
         self.m_cmps = set()
+        self.s_cmps = set()
 
         self.alarm_clock = AlarmClock() if platform.system() == "Windows" else None
         self.done = False
@@ -51,8 +54,6 @@ class KeyHandler:
 
         default = [lambda: True, []]
         press = self.press
-        mouse_add = self.mouse_add
-        mouse_remove = self.mouse_remove
         self.binds_down = ddict(lambda: ddict(lambda: default), {
             frozenset(): ddict(lambda: default, {
                 sbo: [press, ["backspace"]],
@@ -86,6 +87,7 @@ class KeyHandler:
                 "Q": [press, ["volumemute"]],
                 "W": [press, ["volumedown"]],
                 "E": [press, ["volumeup"]],
+                "C": [put_code, []],
             }),
             frozenset([self.mods[0], self.mods[1]]): ddict(lambda: default, {
                 "I": [press, ["shift", "up"]],
@@ -98,11 +100,17 @@ class KeyHandler:
                 "H": [press, ["shift", "home"]],
             }),
             frozenset([self.mods[2]]): ddict(lambda: default, {
-                "R": [pyautogui.mouseDown, []],
+                "R": [self.mouse_down, ["left"]],
+                "3": [self.mouse_down, ["middle"]],
+                "W": [self.mouse_down, ["right"]],
+                "T": [pyautogui.scroll, [-3]],
+                "G": [pyautogui.scroll, [3]],
                 "H": [self.mouse_toggle_screen, []],
             }),
             frozenset([self.mods[1], self.mods[2]]): ddict(lambda: default, {
-                "R": [pyautogui.mouseDown, []],
+                "R": [self.mouse_down, ["left"]],
+                "3": [self.mouse_down, ["middle"]],
+                "W": [self.mouse_down, ["right"]],
                 "H": [self.mouse_toggle_screen, []],
             }),
             frozenset([self.mods[0], self.mods[1], self.mods[2]]): ddict(lambda: default, {
@@ -114,11 +122,15 @@ class KeyHandler:
         self.binds_up = ddict(lambda: ddict(lambda: default), {
             frozenset(): ddict(lambda: default, {}),
             frozenset([self.mods[2]]): ddict(lambda: default, {
-                "R": [pyautogui.mouseUp, []],
+                "R": [self.mouse_up, ["left"]],
+                "3": [self.mouse_up, ["middle"]],
+                "W": [self.mouse_up, ["right"]],
             }),
             frozenset([self.mods[1]]): ddict(lambda: default, {}),
             frozenset([self.mods[2], self.mods[1]]): ddict(lambda: default, {
-                "R": [pyautogui.mouseUp, []],
+                "R": [self.mouse_up, ["left"]],
+                "3": [self.mouse_up, ["middle"]],
+                "W": [self.mouse_up, ["right"]],
             })
         })
 
@@ -131,15 +143,22 @@ class KeyHandler:
 
         # mouse movement
         move_map = {
-            "E": [0, -1],
-            "S": [-1, 0],
-            "D": [0, 1],
-            "F": [1, 0],
+            "E": (0, -1),
+            "S": (-1, 0),
+            "D": (0, 1),
+            "F": (1, 0),
+        }
+        scroll_map = {
+            "T": -1,
+            "G": 1,
         }
         for key in filter(lambda x: self.mods[2] in x, self.binds_down.keys()):
             for char in move_map.keys():
-                self.binds_down[key][char] = [mouse_add, move_map[char]]
-                self.binds_up[key][char] = [mouse_remove, move_map[char]]
+                self.binds_down[key][char] = [self.key_add, [move_map[char], self.m_cmps, "m_thread", self.mouse_move]]
+                self.binds_up[key][char] = [self.key_remove, [move_map[char], self.m_cmps, "m_thread"]]
+            for char in scroll_map.keys():
+                self.binds_down[key][char] = [self.key_add, [scroll_map[char], self.s_cmps, "s_thread", self.scroll_move]]
+                self.binds_up[key][char] = [self.key_remove, [scroll_map[char], self.s_cmps, "s_thread"]]
 
         jump_keys = [["U", "I", "O", "P"], ["J", "K", "L", "Oem_1"], ["M", "Oem_Comma", "Oem_Period", "Oem_2"]]
         jump_map = {key: [y, x] for x, row in enumerate(jump_keys) for y, key in enumerate(row)}
@@ -259,8 +278,12 @@ class KeyHandler:
 
     def mouse_reset(self):
         self.m_cmps.clear()
-        if self.m_thread is not None:
+        self.s_cmps.clear()
+        if self.m_thread:
             self.m_thread.join()
+        if self.s_thread:
+            self.s_thread.join()
+        self.m_thread, self.s_thread = None, None
         self.curr_mods.remove(self.mods[2])
         return True
 
@@ -269,16 +292,20 @@ class KeyHandler:
         self.last_esc = time.time()
         self.rep = 1
         self.curr_mods.clear()
-        self.m_cmps.clear()
-        if self.m_thread is not None:
-            self.m_thread.join()
-        self.m_thread = None
+        self.mouse_reset()
+        return True
 
     def esc_check(self):
         if time.time() - self.last_esc < 0.5:
             self.hard_reset()
         self.last_esc = time.time()
         return True
+
+    def mouse_down(self, button):
+        pyautogui.mouseDown(button=button)
+
+    def mouse_up(self, button):
+        pyautogui.mouseUp(button=button)
 
     def mouse_move(self):
         while True:
@@ -297,21 +324,45 @@ class KeyHandler:
             if mag > 0:
                 pyautogui.move(vx / mag, vy / mag)
 
-    def mouse_add(self, *vel):
+    def scroll_move(self):
+        if self.mods[1] in self.curr_mods:
+            time.sleep(0.01)
+            lock = threading.Lock()
+            lock.acquire()
+            vy = sum(self.s_cmps)
+            lock.release()
+            mag = -vy * 200
+            pyautogui.scroll(mag)
+
+        while True:
+            time.sleep(0.01)
+            lock = threading.Lock()
+            lock.acquire()
+
+            if not self.s_cmps:
+                lock.release()
+                break
+
+            vy = sum(self.s_cmps)
+            lock.release()
+            mag = -vy * (30 if self.mods[1] not in self.curr_mods else 10)
+            pyautogui.scroll(mag)
+
+    def key_add(self, key, container, thread_name, thread_fxn):
         lock = threading.Lock()
         lock.acquire()
-        if not self.m_cmps:
-            self.m_thread = threading.Thread(target=self.mouse_move)
-            self.m_thread.start()
-        self.m_cmps.add(vel)
+        if not container:
+            setattr(self, thread_name, threading.Thread(target=thread_fxn))
+            getattr(self, thread_name).start()
+        container.add(key)
         lock.release()
 
-    def mouse_remove(self, *vel):
+    def key_remove(self, key, container, thread_name):
         lock = threading.Lock()
         lock.acquire()
-        self.m_cmps.remove(vel)
-        if not self.m_cmps:
-            self.m_thread.join()
+        container.remove(key)
+        if not container:
+            getattr(self, thread_name).join()
         lock.release()
 
     def curr_monitor(self):
