@@ -4,7 +4,8 @@ import atexit
 import platform
 
 if platform.system() == "Windows":
-    import PyHook3
+    import pyWinhook as PyHook3
+    import pythoncom
     import pythoncom
     import win32api
     import win32con
@@ -25,6 +26,7 @@ def main():
         hm.KeyDown = handler.key_down
         hm.KeyUp = handler.key_up
         hm.HookKeyboard()
+        pythoncom.PumpMessages()
         atexit.register(at_exit, handler)
         signal_exit.handler = handler
         signal.signal(signal.SIGTERM, signal_exit)

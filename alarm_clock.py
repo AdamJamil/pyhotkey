@@ -340,11 +340,15 @@ class AlarmClock:
         self.save()
 
     def save(self):
-        root_dir = pathlib.Path(__file__).parent.absolute()
-        file_name = os.path.join(root_dir, "IO", "events")
-        print(file_name)
-        with open(file_name, "wb") as f:
-            pickle.dump(self.events, f)
+        try:
+            root_dir = pathlib.Path(__file__).parent.absolute()
+            file_name = os.path.join(root_dir, "IO", "events")
+            print(file_name)
+            with open(file_name, "wb") as f:
+                pickle.dump(self.events, f)
+        except Exception as e:
+            traceback.print_exc()
+            print("Failed to save events: " + str(e))
 
     def show_events(self):
         if len(self.events) == 0:

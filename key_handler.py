@@ -45,6 +45,7 @@ class KeyHandler:
         self.m_cmps = set()
         self.s_cmps = set()
         self.mouse_is_down = False
+        self.lock = threading.Lock()
 
         self.alarm_clock = AlarmClock() if platform.system() == "Windows" else None
         self.done = False
@@ -273,11 +274,19 @@ class KeyHandler:
                 [i],
             ]
 
+        def mod_add(mod):
+            with self.lock:
+                self.curr_mods.add(mod)
+
+        def mod_remove(mod):
+            with self.lock:
+                self.curr_mods.discard(mod)
+
         # insert and remove modifiers
         for key in self.binds_down.keys():
             for modifier in self.mods:
-                self.binds_down[key][modifier] = [self.curr_mods.add, [modifier]]
-                self.binds_up[key][modifier] = [self.curr_mods.remove, [modifier]]
+                self.binds_down[key][modifier] = [mod_add, [modifier]]
+                self.binds_up[key][modifier] = [mod_remove, [modifier]]
 
         # soft and mouse reset
         for key in self.binds_up.keys():
@@ -306,7 +315,9 @@ class KeyHandler:
         return event if temp else None
 
     def mac_down(self, *args, **kwargs):
-        print(f'down key: {str(args[0]).split(".")[-1] if "." in str(args[0]) else str(args[0])[1:-1]}')
+        print(
+            f'down key: {str(args[0]).split(".")[-1] if "." in str(args[0]) else str(args[0])[1:-1]}'
+        )
         if time.time() - self.last_press < 0.001:
             print("\tignored")
             return True
@@ -317,7 +328,9 @@ class KeyHandler:
 
     def mac_up(self, *args, **kwargs):
         # print(f"up arg: {str(args[0])}")
-        print(f'up key: {str(args[0]).split(".")[-1] if "." in str(args[0]) else str(args[0])[1:-1]}')
+        print(
+            f'up key: {str(args[0]).split(".")[-1] if "." in str(args[0]) else str(args[0])[1:-1]}'
+        )
         key = str(args[0]).split(".")[-1] if "." in str(args[0]) else str(args[0])[1:-1]
         self.key_up(self.KeyEvent(key.upper()))
 
@@ -424,53 +437,49 @@ class KeyHandler:
     def mouse_move(self):
         while True:
             time.sleep(0.01)
-            lock = threading.Lock()
-            lock.acquire()
+            with self.lock:
+                if not self.m_cmps:
+                    break
+                cmps = set(self.m_cmps)
+                mods = set(self.curr_mods)
 
-            if not self.m_cmps:
-                lock.release()
-                break
-
-            vx, vy = [sum(x) for x in zip(*self.m_cmps)]
-            lock.release()
-            mag = math.sqrt(vx * vx + vy * vy) / 6 + (
-                1 + 4 * (self.mods[1] not in self.curr_mods)
+            slow = self.mods[1] in mods
+            vx, vy = [sum(x) for x in zip(*cmps)]
+            mag = (
+                math.sqrt(vx * vx + vy * vy)
             )
 
             if mag > 0:
-                pyautogui.move(vx / mag, vy / mag)
+                speed = 15 if slow else 45
+                scale = speed / mag
+                pyautogui.moveRel(vx * scale, vy * scale)
 
     def scroll_move(self):
         while True:
             time.sleep(0.01)
-            lock = threading.Lock()
-            lock.acquire()
+            with self.lock:
+                if not self.s_cmps:
+                    break
 
-            if not self.s_cmps:
-                lock.release()
-                break
-
-            vy = sum(self.s_cmps)
-            lock.release()
-            mag = -vy * (30 if self.mods[1] not in self.curr_mods else 10)
+                vy = sum(self.s_cmps)
+                mag = -vy * (30 if self.mods[1] not in self.curr_mods else 10)
             pyautogui.scroll(mag)
 
     def key_add(self, key, container, thread_name, thread_fxn):
-        lock = threading.Lock()
-        lock.acquire()
-        if not container:
-            setattr(self, thread_name, threading.Thread(target=thread_fxn))
-            getattr(self, thread_name).start()
-        container.add(key)
-        lock.release()
+        t = None
+        with self.lock:
+            if not container or getattr(self, thread_name) is None:
+                t = threading.Thread(target=thread_fxn, daemon=True)
+                setattr(self, thread_name, t)
+            container.add(key)
+        if t:
+            t.start()
 
     def key_remove(self, key, container, thread_name):
-        lock = threading.Lock()
-        lock.acquire()
-        container.remove(key)
-        if not container:
-            getattr(self, thread_name).join()
-        lock.release()
+        with self.lock:
+            container.discard(key)
+            if not container:
+                setattr(self, thread_name, None)
 
     def curr_monitor(self):
         pos = pyautogui.position()
@@ -502,16 +511,14 @@ class KeyHandler:
 
     def exit(self):
         if self.done:
-            return
+            return True
         self.done = True
-        self.alarm_clock.save()
-        pid = os.getpid()
-        thread = threading.Thread(
-            target=lambda: (time.sleep(0.1), os.kill(pid, signal.SIGTERM))
-        )
-        thread.start()
+
+        if self.alarm_clock:
+            self.alarm_clock.save()
+
+        threading.Timer(0.1, lambda: os._exit(0)).start()
 
     def restart(self):
         subprocess.Popen([sys.executable] + sys.argv, close_fds=True)
         self.exit()
-
