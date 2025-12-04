@@ -25,6 +25,8 @@ else:
     from pynput.keyboard import Key, Controller
 
 
+DEBUG_MODE = sys.stdout is not None and sys.stdout.isatty()
+
 class KeyHandler:
     def __init__(self):
         pyautogui.PAUSE = 0
@@ -307,7 +309,8 @@ class KeyHandler:
 
     def key_up(self, event):
         value = self.binds_up[frozenset(self.curr_mods)][event.Key]
-        print(event, self.curr_mods)
+        if DEBUG_MODE:
+            print(event, self.curr_mods)
         return type(value[0](*value[1])) == bool
 
     def darwin_intercept(self, _, event):
@@ -345,8 +348,8 @@ class KeyHandler:
     }
 
     def press(self, *keys):
-        # time.sleep(0.2)
-        print(f"pressing {keys}")
+        if DEBUG_MODE:
+            print(f"pressing {keys}")
         if platform.system() == "Windows":
             if (
                 "xonsh" in GetWindowText(GetForegroundWindow())
@@ -386,12 +389,14 @@ class KeyHandler:
         # if platform.system() != "Windows":
         #     for mod in curr_mods:
         #         pyautogui.keyDown(mod)
-        print(f"done pressing {keys}")
+        if DEBUG_MODE:
+            print(f"done pressing {keys}")
 
         self.rep = 1
 
     def reset(self):
-        print("reset")
+        if DEBUG_MODE:
+            print("reset")
         self.rep = 1
         self.curr_mods.remove(self.mods[0])
         self.mouse_is_down = False
@@ -441,7 +446,6 @@ class KeyHandler:
         base_speed = 25 * 100 / 3840  # percentage of screen per second
 
         while True:
-            time.sleep(0.01)
             with self.lock:
                 if not self.m_cmps:
                     break
@@ -461,9 +465,10 @@ class KeyHandler:
                 pyautogui.moveRel(vx * scale, vy * scale)
             last = time.perf_counter()
 
+            time.sleep(0.01)
+
     def scroll_move(self):
         while True:
-            time.sleep(0.01)
             with self.lock:
                 if not self.s_cmps:
                     break
@@ -471,6 +476,8 @@ class KeyHandler:
                 vy = sum(self.s_cmps)
                 mag = -vy * (30 if self.mods[1] not in self.curr_mods else 10)
             pyautogui.scroll(mag)
+
+            time.sleep(0.01)
 
     def key_add(self, key, container, thread_name, thread_fxn):
         t = None
