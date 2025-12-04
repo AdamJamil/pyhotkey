@@ -15,34 +15,17 @@ import subprocess
 import pyautogui
 import screeninfo
 from codeforces import put_code
-
-import platform
-
-if platform.system() == "Windows":
-    import pywinauto.keyboard
-    from win32gui import GetWindowText, GetForegroundWindow
-else:
-    from pynput.keyboard import Key, Controller
+from constants import DEBUG_MODE, CAPS, RLT, RRT, LLT, MODIFIERS, OPEN_BRACKET, CLOSE_BRACKET
 
 
-DEBUG_MODE = sys.stdout is not None and sys.stdout.isatty()
-
-CAPS = "F13"
-LLT = "F14"  # left left thumb
-RLT = "F15"  # right left thumb
-RRT = "F16"  # right right thumb
-MODIFIERS = [CAPS, LLT, RLT, RRT]
+import pywinauto.keyboard
+from win32gui import GetWindowText, GetForegroundWindow
 
 
 class KeyHandler:
     def __init__(self):
         pyautogui.PAUSE = 0
         pyautogui.FAILSAFE = False
-
-        if platform.system() != "Windows":
-            self.KeyEvent = namedtuple("KeyEvent", ["Key"])
-            self.keyboard = Controller()
-            self.flag = True
 
         self.last_press = time.time()
         self.last_esc = time.time()
@@ -56,13 +39,8 @@ class KeyHandler:
         self.lock = threading.Lock()
         self.monitors = screeninfo.get_monitors()
 
-        self.alarm_clock = AlarmClock() if platform.system() == "Windows" else None
+        self.alarm_clock = AlarmClock()
         self.done = False
-
-        sbo = "Oem_4" if platform.system() == "Windows" else "["
-        sbc = "Oem_6" if platform.system() == "Windows" else "]"
-        # cbo = "Oem_4" if platform.system() == "Windows" else "["
-        # cbc = "Oem_4" if platform.system() == "Windows" else "["
 
         default = [lambda: True, []]
         press = self.press
@@ -72,8 +50,8 @@ class KeyHandler:
                 frozenset(): ddict(
                     lambda: default,
                     {
-                        sbo: [press, ["backspace"]],
-                        sbc: [press, ["delete"]],
+                        OPEN_BRACKET: [press, ["backspace"]],
+                        CLOSE_BRACKET: [press, ["delete"]],
                     },
                 ),
                 frozenset([CAPS]): ddict(
@@ -319,31 +297,6 @@ class KeyHandler:
             print(event, self.curr_mods)
         return type(value[0](*value[1])) == bool
 
-    def darwin_intercept(self, _, event):
-        temp = self.flag
-        self.flag = True
-        return event if temp else None
-
-    def mac_down(self, *args, **kwargs):
-        print(
-            f'down key: {str(args[0]).split(".")[-1] if "." in str(args[0]) else str(args[0])[1:-1]}'
-        )
-        if time.time() - self.last_press < 0.001:
-            print("\tignored")
-            return True
-        # print(f"down arg: {str(args[0])}")
-        key = str(args[0]).split(".")[-1] if "." in str(args[0]) else str(args[0])[1:-1]
-        self.flag = self.key_down(self.KeyEvent(key.upper()))
-        print(f"curr_mods: {self.curr_mods}")
-
-    def mac_up(self, *args, **kwargs):
-        # print(f"up arg: {str(args[0])}")
-        print(
-            f'up key: {str(args[0]).split(".")[-1] if "." in str(args[0]) else str(args[0])[1:-1]}'
-        )
-        key = str(args[0]).split(".")[-1] if "." in str(args[0]) else str(args[0])[1:-1]
-        self.key_up(self.KeyEvent(key.upper()))
-
     pywinmap = {
         "{": "+[",
         "}": "+]",
@@ -356,45 +309,14 @@ class KeyHandler:
     def press(self, *keys):
         if DEBUG_MODE:
             print(f"pressing {keys}")
-        if platform.system() == "Windows":
-            if (
-                "xonsh" in GetWindowText(GetForegroundWindow())
-                and keys[0] in self.pywinmap.keys()
-            ):
-                self.last_press = time.time()
-                pywinauto.keyboard.send_keys(self.pywinmap[keys[0]], pause=0)
-                self.last_press = time.time()
-                return
-        # else:
-        #     curr_mods = self.curr_mods
-        #     for mod in curr_mods:
-        #         pyautogui.keyUp(mod)
 
-        if platform.system() != "Windows":
-            mp = {
-                "shift": Key.shift,
-                "backspace": Key.backspace,
-                "delete": Key.delete,
-            }
         for _ in range(self.rep):
             self.last_press = time.time()
             for k in keys:
-                if platform.system() == "Windows":
-                    pyautogui.keyDown(k)
-                else:
-                    if k in mp.keys():
-                        k = mp[k]
-                    self.keyboard.press(k)
+                pyautogui.keyDown(k)
             for k in reversed(keys):
-                if platform.system() == "Windows":
-                    pyautogui.keyUp(k)
-                else:
-                    if k in mp.keys():
-                        k = mp[k]
-                    self.keyboard.release(k)
-        # if platform.system() != "Windows":
-        #     for mod in curr_mods:
-        #         pyautogui.keyDown(mod)
+                pyautogui.keyUp(k)
+
         if DEBUG_MODE:
             print(f"done pressing {keys}")
 
