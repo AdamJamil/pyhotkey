@@ -27,6 +27,13 @@ else:
 
 DEBUG_MODE = sys.stdout is not None and sys.stdout.isatty()
 
+CAPS = "F13"
+LLT = "F14"  # left left thumb
+RLT = "F15"  # right left thumb
+RRT = "F16"  # right right thumb
+MODIFIERS = [CAPS, LLT, RLT, RRT]
+
+
 class KeyHandler:
     def __init__(self):
         pyautogui.PAUSE = 0
@@ -40,7 +47,6 @@ class KeyHandler:
         self.last_press = time.time()
         self.last_esc = time.time()
         self.rep = 1
-        self.mods = ["F15", "F13", "F14", "F16"]
         self.curr_mods = set()
         self.m_thread = None
         self.s_thread = None
@@ -70,7 +76,7 @@ class KeyHandler:
                         sbc: [press, ["delete"]],
                     },
                 ),
-                frozenset([self.mods[0]]): ddict(
+                frozenset([CAPS]): ddict(
                     lambda: default,
                     {
                         "I": [press, ["up"]],
@@ -85,7 +91,7 @@ class KeyHandler:
                         "C": [cli.CLIServer, [self.alarm_clock]],
                     },
                 ),
-                frozenset([self.mods[1]]): ddict(
+                frozenset([RLT]): ddict(
                     lambda: default,
                     {
                         "A": [press, ["["]],
@@ -106,7 +112,7 @@ class KeyHandler:
                         "C": [put_code, []],
                     },
                 ),
-                frozenset([self.mods[0], self.mods[1]]): ddict(
+                frozenset([CAPS, RLT]): ddict(
                     lambda: default,
                     {
                         "I": [press, ["shift", "up"]],
@@ -119,7 +125,7 @@ class KeyHandler:
                         "H": [press, ["shift", "home"]],
                     },
                 ),
-                frozenset([self.mods[2]]): ddict(
+                frozenset([RRT]): ddict(
                     lambda: default,
                     {
                         "R": [self.mouse_down, ["left"]],
@@ -130,7 +136,7 @@ class KeyHandler:
                         "H": [self.mouse_toggle_screen, []],
                     },
                 ),
-                frozenset([self.mods[3]]): ddict(
+                frozenset([LLT]): ddict(
                     lambda: default,
                     {
                         "E": [self.mouse_down, ["left"]],
@@ -140,7 +146,7 @@ class KeyHandler:
                         "S": [pyautogui.scroll, [6]],
                     },
                 ),
-                frozenset([self.mods[1], self.mods[2]]): ddict(
+                frozenset([RLT, RRT]): ddict(
                     lambda: default,
                     {
                         "R": [self.mouse_down, ["left"]],
@@ -149,7 +155,7 @@ class KeyHandler:
                         "H": [self.mouse_toggle_screen, []],
                     },
                 ),
-                frozenset([self.mods[0], self.mods[1], self.mods[2]]): ddict(
+                frozenset([CAPS, RLT, RRT]): ddict(
                     lambda: default,
                     {
                         "Q": [self.exit, []],
@@ -163,7 +169,7 @@ class KeyHandler:
             lambda: ddict(lambda: default),
             {
                 frozenset(): ddict(lambda: default, {}),
-                frozenset([self.mods[2]]): ddict(
+                frozenset([RRT]): ddict(
                     lambda: default,
                     {
                         "R": [self.mouse_up, ["left"]],
@@ -171,7 +177,7 @@ class KeyHandler:
                         "W": [self.mouse_up, ["right"]],
                     },
                 ),
-                frozenset([self.mods[3]]): ddict(
+                frozenset([LLT]): ddict(
                     lambda: default,
                     {
                         "E": [self.mouse_up, ["left"]],
@@ -179,8 +185,8 @@ class KeyHandler:
                         "Q": [self.mouse_up, ["right"]],
                     },
                 ),
-                frozenset([self.mods[1]]): ddict(lambda: default, {}),
-                frozenset([self.mods[2], self.mods[1]]): ddict(
+                frozenset([RLT]): ddict(lambda: default, {}),
+                frozenset([RRT, RLT]): ddict(
                     lambda: default,
                     {
                         "R": [self.mouse_up, ["left"]],
@@ -193,7 +199,7 @@ class KeyHandler:
 
         # add default keys
         for key in chain.from_iterable(
-            combinations(self.mods, r) for r in range(len(self.mods) + 1)
+            combinations(MODIFIERS, r) for r in range(len(MODIFIERS) + 1)
         ):
             if frozenset(key) not in self.binds_down:
                 self.binds_down[frozenset(key)] = ddict(lambda: default)
@@ -211,7 +217,7 @@ class KeyHandler:
             "T": -1,
             "G": 1,
         }
-        for key in filter(lambda x: self.mods[2] in x, self.binds_down.keys()):
+        for key in filter(lambda x: RRT in x, self.binds_down.keys()):
             for char in move_map.keys():
                 self.binds_down[key][char] = [
                     self.key_add,
@@ -234,7 +240,7 @@ class KeyHandler:
             "W": -1,
             "S": 1,
         }
-        for key in filter(lambda x: self.mods[3] in x, self.binds_down.keys()):
+        for key in filter(lambda x: LLT in x, self.binds_down.keys()):
             for char in move_map.keys():
                 self.binds_down[key][char] = [
                     self.key_add,
@@ -262,17 +268,17 @@ class KeyHandler:
         jump_map = {
             key: [y, x] for x, row in enumerate(jump_keys) for y, key in enumerate(row)
         }
-        for key in filter(lambda x: self.mods[2] in x, self.binds_down.keys()):
+        for key in filter(lambda x: RRT in x, self.binds_down.keys()):
             for char in jump_map.keys():
                 self.binds_down[key][char] = [self.mouse_jump, jump_map[char]]
 
         # allow for repetition
         for i in range(1, 10):
-            self.binds_down[frozenset({self.mods[0]})][str(i)] = [
+            self.binds_down[frozenset({CAPS})][str(i)] = [
                 partial(self.__setattr__, "rep"),
                 [i],
             ]
-            self.binds_down[frozenset({self.mods[0], self.mods[1]})][str(i)] = [
+            self.binds_down[frozenset({CAPS, RLT})][str(i)] = [
                 partial(self.__setattr__, "rep"),
                 [i],
             ]
@@ -287,15 +293,15 @@ class KeyHandler:
 
         # insert and remove modifiers
         for key in self.binds_down.keys():
-            for modifier in self.mods:
+            for modifier in MODIFIERS:
                 self.binds_down[key][modifier] = [mod_add, [modifier]]
                 self.binds_up[key][modifier] = [mod_remove, [modifier]]
 
         # soft and mouse reset
         for key in self.binds_up.keys():
-            self.binds_up[key][self.mods[0]] = [self.reset, []]
-            self.binds_up[key][self.mods[2]] = [self.mouse_reset, []]
-            self.binds_up[key][self.mods[3]] = [self.mouse_reset, []]
+            self.binds_up[key][CAPS] = [self.reset, []]
+            self.binds_up[key][RRT] = [self.mouse_reset, []]
+            self.binds_up[key][LLT] = [self.mouse_reset, []]
 
         # hard reset check (double press esc)
         for key in self.binds_down.keys():
@@ -398,7 +404,7 @@ class KeyHandler:
         if DEBUG_MODE:
             print("reset")
         self.rep = 1
-        self.curr_mods.remove(self.mods[0])
+        self.curr_mods.remove(CAPS)
         self.mouse_is_down = False
         self.monitors = screeninfo.get_monitors()
         return True
@@ -412,9 +418,9 @@ class KeyHandler:
         if self.s_thread:
             self.s_thread.join()
         self.m_thread, self.s_thread = None, None
-        for mod in range(2, 4):
-            if self.mods[mod] in self.curr_mods:
-                self.curr_mods.remove(self.mods[mod])
+        for mod in (LLT, RRT):
+            if mod in self.curr_mods:
+                self.curr_mods.remove(mod)
         return True
 
     def hard_reset(self):
@@ -452,7 +458,7 @@ class KeyHandler:
                 cmps = set(self.m_cmps)
                 mods = set(self.curr_mods)
 
-            slow = self.mods[1] in mods
+            slow = RLT in mods
             vx, vy = [sum(x) for x in zip(*cmps)]
             mag = math.sqrt(vx * vx + vy * vy)
 
@@ -474,7 +480,7 @@ class KeyHandler:
                     break
 
                 vy = sum(self.s_cmps)
-                mag = -vy * (30 if self.mods[1] not in self.curr_mods else 10)
+                mag = -vy * (30 if RLT not in self.curr_mods else 10)
             pyautogui.scroll(mag)
 
             time.sleep(0.01)
