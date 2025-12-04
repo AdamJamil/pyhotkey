@@ -512,6 +512,6 @@ class KeyHandler:
         thread.start()
 
     def restart(self):
-        RunCMDThread("CScript \"C:\\Users\\adama\\AppData\\Roaming\\Microsoft\\Windows\\Start "
-                     "Menu\\Programs\\Startup\\launch_script.vbs\"", daemon=False)
+        subprocess.Popen([sys.executable] + sys.argv, close_fds=True)
         self.exit()
+
