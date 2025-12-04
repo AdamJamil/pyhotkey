@@ -24,6 +24,7 @@ if platform.system() == "Windows":
 else:
     from pynput.keyboard import Key, Controller
 
+
 class KeyHandler:
     def __init__(self):
         pyautogui.PAUSE = 0
@@ -37,12 +38,13 @@ class KeyHandler:
         self.last_press = time.time()
         self.last_esc = time.time()
         self.rep = 1
-        self.mods = ["F15", "F13", "F14"]
+        self.mods = ["F15", "F13", "F14", "F16"]
         self.curr_mods = set()
         self.m_thread = None
         self.s_thread = None
         self.m_cmps = set()
         self.s_cmps = set()
+        self.mouse_is_down = False
 
         self.alarm_clock = AlarmClock() if platform.system() == "Windows" else None
         self.done = False
@@ -54,88 +56,141 @@ class KeyHandler:
 
         default = [lambda: True, []]
         press = self.press
-        self.binds_down = ddict(lambda: ddict(lambda: default), {
-            frozenset(): ddict(lambda: default, {
-                sbo: [press, ["backspace"]],
-                sbc: [press, ["delete"]],
-            }),
-            frozenset([self.mods[0]]): ddict(lambda: default, {
-                "I": [press, ["up"]],
-                "J": [press, ["left"]],
-                "K": [press, ["down"]],
-                "L": [press, ["right"]],
-                "U": [press, ["ctrl", "left"]],
-                "O": [press, ["ctrl", "right"]],
-                "Y": [press, ["end"]],
-                "H": [press, ["home"]],
-                "Oem_3": [press, ["capslock"]],
-                "C": [cli.CLIServer, [self.alarm_clock]]
-            }),
-            frozenset([self.mods[1]]): ddict(lambda: default, {
-                "A": [press, ["["]],
-                "S": [press, ["shift", "{"]],
-                "D": [press, ["shift", "("]],
-                "F": [press, ["\\"]],
-                "G": [press, ["+"]],
-                "T": [press, ["_"]],
-                "Y": [press, ["="]],
-                "H": [press, ["-"]],
-                "J": [press, ["/"]],
-                "K": [press, ["shift", ")"]],
-                "L": [press, ["shift", "}"]],
-                "Oem_1": [press, ["]"]],
-                "Q": [press, ["volumemute"]],
-                "W": [press, ["volumedown"]],
-                "E": [press, ["volumeup"]],
-                "C": [put_code, []],
-            }),
-            frozenset([self.mods[0], self.mods[1]]): ddict(lambda: default, {
-                "I": [press, ["shift", "up"]],
-                "J": [press, ["shift", "left"]],
-                "K": [press, ["shift", "down"]],
-                "L": [press, ["shift", "right"]],
-                "U": [press, ["ctrl", "shift", "left"]],
-                "O": [press, ["ctrl", "shift", "right"]],
-                "Y": [press, ["shift", "end"]],
-                "H": [press, ["shift", "home"]],
-            }),
-            frozenset([self.mods[2]]): ddict(lambda: default, {
-                "R": [self.mouse_down, ["left"]],
-                "3": [self.mouse_down, ["middle"]],
-                "W": [self.mouse_down, ["right"]],
-                "T": [pyautogui.scroll, [-3]],
-                "G": [pyautogui.scroll, [3]],
-                "H": [self.mouse_toggle_screen, []],
-            }),
-            frozenset([self.mods[1], self.mods[2]]): ddict(lambda: default, {
-                "R": [self.mouse_down, ["left"]],
-                "3": [self.mouse_down, ["middle"]],
-                "W": [self.mouse_down, ["right"]],
-                "H": [self.mouse_toggle_screen, []],
-            }),
-            frozenset([self.mods[0], self.mods[1], self.mods[2]]): ddict(lambda: default, {
-                "Q": [self.exit, []],
-                "R": [self.restart, []],
-            })
-        })
+        self.binds_down = ddict(
+            lambda: ddict(lambda: default),
+            {
+                frozenset(): ddict(
+                    lambda: default,
+                    {
+                        sbo: [press, ["backspace"]],
+                        sbc: [press, ["delete"]],
+                    },
+                ),
+                frozenset([self.mods[0]]): ddict(
+                    lambda: default,
+                    {
+                        "I": [press, ["up"]],
+                        "J": [press, ["left"]],
+                        "K": [press, ["down"]],
+                        "L": [press, ["right"]],
+                        "U": [press, ["ctrl", "left"]],
+                        "O": [press, ["ctrl", "right"]],
+                        "Y": [press, ["end"]],
+                        "H": [press, ["home"]],
+                        "Oem_3": [press, ["capslock"]],
+                        "C": [cli.CLIServer, [self.alarm_clock]],
+                    },
+                ),
+                frozenset([self.mods[1]]): ddict(
+                    lambda: default,
+                    {
+                        "A": [press, ["["]],
+                        "S": [press, ["shift", "{"]],
+                        "D": [press, ["shift", "("]],
+                        "F": [press, ["\\"]],
+                        "G": [press, ["+"]],
+                        "T": [press, ["_"]],
+                        "Y": [press, ["="]],
+                        "H": [press, ["-"]],
+                        "J": [press, ["/"]],
+                        "K": [press, ["shift", ")"]],
+                        "L": [press, ["shift", "}"]],
+                        "Oem_1": [press, ["]"]],
+                        "Q": [press, ["volumemute"]],
+                        "W": [press, ["volumedown"]],
+                        "E": [press, ["volumeup"]],
+                        "C": [put_code, []],
+                    },
+                ),
+                frozenset([self.mods[0], self.mods[1]]): ddict(
+                    lambda: default,
+                    {
+                        "I": [press, ["shift", "up"]],
+                        "J": [press, ["shift", "left"]],
+                        "K": [press, ["shift", "down"]],
+                        "L": [press, ["shift", "right"]],
+                        "U": [press, ["ctrl", "shift", "left"]],
+                        "O": [press, ["ctrl", "shift", "right"]],
+                        "Y": [press, ["shift", "end"]],
+                        "H": [press, ["shift", "home"]],
+                    },
+                ),
+                frozenset([self.mods[2]]): ddict(
+                    lambda: default,
+                    {
+                        "R": [self.mouse_down, ["left"]],
+                        "3": [self.mouse_down, ["middle"]],
+                        "W": [self.mouse_down, ["right"]],
+                        "T": [pyautogui.scroll, [-3]],
+                        "G": [pyautogui.scroll, [3]],
+                        "H": [self.mouse_toggle_screen, []],
+                    },
+                ),
+                frozenset([self.mods[3]]): ddict(
+                    lambda: default,
+                    {
+                        "E": [self.mouse_down, ["left"]],
+                        "2": [self.mouse_down, ["middle"]],
+                        "Q": [self.mouse_down, ["right"]],
+                        "W": [pyautogui.scroll, [-6]],
+                        "S": [pyautogui.scroll, [6]],
+                    },
+                ),
+                frozenset([self.mods[1], self.mods[2]]): ddict(
+                    lambda: default,
+                    {
+                        "R": [self.mouse_down, ["left"]],
+                        "3": [self.mouse_down, ["middle"]],
+                        "W": [self.mouse_down, ["right"]],
+                        "H": [self.mouse_toggle_screen, []],
+                    },
+                ),
+                frozenset([self.mods[0], self.mods[1], self.mods[2]]): ddict(
+                    lambda: default,
+                    {
+                        "Q": [self.exit, []],
+                        "R": [self.restart, []],
+                    },
+                ),
+            },
+        )
 
-        self.binds_up = ddict(lambda: ddict(lambda: default), {
-            frozenset(): ddict(lambda: default, {}),
-            frozenset([self.mods[2]]): ddict(lambda: default, {
-                "R": [self.mouse_up, ["left"]],
-                "3": [self.mouse_up, ["middle"]],
-                "W": [self.mouse_up, ["right"]],
-            }),
-            frozenset([self.mods[1]]): ddict(lambda: default, {}),
-            frozenset([self.mods[2], self.mods[1]]): ddict(lambda: default, {
-                "R": [self.mouse_up, ["left"]],
-                "3": [self.mouse_up, ["middle"]],
-                "W": [self.mouse_up, ["right"]],
-            })
-        })
+        self.binds_up = ddict(
+            lambda: ddict(lambda: default),
+            {
+                frozenset(): ddict(lambda: default, {}),
+                frozenset([self.mods[2]]): ddict(
+                    lambda: default,
+                    {
+                        "R": [self.mouse_up, ["left"]],
+                        "3": [self.mouse_up, ["middle"]],
+                        "W": [self.mouse_up, ["right"]],
+                    },
+                ),
+                frozenset([self.mods[3]]): ddict(
+                    lambda: default,
+                    {
+                        "E": [self.mouse_up, ["left"]],
+                        "2": [self.mouse_up, ["middle"]],
+                        "Q": [self.mouse_up, ["right"]],
+                    },
+                ),
+                frozenset([self.mods[1]]): ddict(lambda: default, {}),
+                frozenset([self.mods[2], self.mods[1]]): ddict(
+                    lambda: default,
+                    {
+                        "R": [self.mouse_up, ["left"]],
+                        "3": [self.mouse_up, ["middle"]],
+                        "W": [self.mouse_up, ["right"]],
+                    },
+                ),
+            },
+        )
 
         # add default keys
-        for key in chain.from_iterable(combinations(self.mods, r) for r in range(len(self.mods) + 1)):
+        for key in chain.from_iterable(
+            combinations(self.mods, r) for r in range(len(self.mods) + 1)
+        ):
             if frozenset(key) not in self.binds_down:
                 self.binds_down[frozenset(key)] = ddict(lambda: default)
             if frozenset(key) not in self.binds_up:
@@ -154,22 +209,69 @@ class KeyHandler:
         }
         for key in filter(lambda x: self.mods[2] in x, self.binds_down.keys()):
             for char in move_map.keys():
-                self.binds_down[key][char] = [self.key_add, [move_map[char], self.m_cmps, "m_thread", self.mouse_move]]
-                self.binds_up[key][char] = [self.key_remove, [move_map[char], self.m_cmps, "m_thread"]]
+                self.binds_down[key][char] = [
+                    self.key_add,
+                    [move_map[char], self.m_cmps, "m_thread", self.mouse_move],
+                ]
+                self.binds_up[key][char] = [
+                    self.key_remove,
+                    [move_map[char], self.m_cmps, "m_thread"],
+                ]
             for char in scroll_map.keys():
-                self.binds_down[key][char] = [self.key_add, [scroll_map[char], self.s_cmps, "s_thread", self.scroll_move]]
-                self.binds_up[key][char] = [self.key_remove, [scroll_map[char], self.s_cmps, "s_thread"]]
+                self.binds_down[key][char] = [
+                    self.key_add,
+                    [scroll_map[char], self.s_cmps, "s_thread", self.scroll_move],
+                ]
+                self.binds_up[key][char] = [
+                    self.key_remove,
+                    [scroll_map[char], self.s_cmps, "s_thread"],
+                ]
+        scroll_map = {
+            "W": -1,
+            "S": 1,
+        }
+        for key in filter(lambda x: self.mods[3] in x, self.binds_down.keys()):
+            for char in move_map.keys():
+                self.binds_down[key][char] = [
+                    self.key_add,
+                    [move_map[char], self.m_cmps, "m_thread", self.mouse_move],
+                ]
+                self.binds_up[key][char] = [
+                    self.key_remove,
+                    [move_map[char], self.m_cmps, "m_thread"],
+                ]
+            for char in scroll_map.keys():
+                self.binds_down[key][char] = [
+                    self.key_add,
+                    [scroll_map[char], self.s_cmps, "s_thread", self.scroll_move],
+                ]
+                self.binds_up[key][char] = [
+                    self.key_remove,
+                    [scroll_map[char], self.s_cmps, "s_thread"],
+                ]
 
-        jump_keys = [["U", "I", "O", "P"], ["J", "K", "L", "Oem_1"], ["M", "Oem_Comma", "Oem_Period", "Oem_2"]]
-        jump_map = {key: [y, x] for x, row in enumerate(jump_keys) for y, key in enumerate(row)}
+        jump_keys = [
+            ["U", "I", "O", "P"],
+            ["J", "K", "L", "Oem_1"],
+            ["M", "Oem_Comma", "Oem_Period", "Oem_2"],
+        ]
+        jump_map = {
+            key: [y, x] for x, row in enumerate(jump_keys) for y, key in enumerate(row)
+        }
         for key in filter(lambda x: self.mods[2] in x, self.binds_down.keys()):
             for char in jump_map.keys():
                 self.binds_down[key][char] = [self.mouse_jump, jump_map[char]]
 
         # allow for repetition
         for i in range(1, 10):
-            self.binds_down[frozenset([self.mods[0]])][str(i)] = [partial(self.__setattr__, "rep"), [i]]
-            self.binds_down[frozenset([self.mods[0], self.mods[1]])][str(i)] = [partial(self.__setattr__, "rep"), [i]]
+            self.binds_down[frozenset({self.mods[0]})][str(i)] = [
+                partial(self.__setattr__, "rep"),
+                [i],
+            ]
+            self.binds_down[frozenset({self.mods[0], self.mods[1]})][str(i)] = [
+                partial(self.__setattr__, "rep"),
+                [i],
+            ]
 
         # insert and remove modifiers
         for key in self.binds_down.keys():
@@ -181,6 +283,7 @@ class KeyHandler:
         for key in self.binds_up.keys():
             self.binds_up[key][self.mods[0]] = [self.reset, []]
             self.binds_up[key][self.mods[2]] = [self.mouse_reset, []]
+            self.binds_up[key][self.mods[3]] = [self.mouse_reset, []]
 
         # hard reset check (double press esc)
         for key in self.binds_down.keys():
@@ -231,7 +334,10 @@ class KeyHandler:
         # time.sleep(0.2)
         print(f"pressing {keys}")
         if platform.system() == "Windows":
-            if "xonsh" in GetWindowText(GetForegroundWindow()) and keys[0] in self.pywinmap.keys():
+            if (
+                "xonsh" in GetWindowText(GetForegroundWindow())
+                and keys[0] in self.pywinmap.keys()
+            ):
                 self.last_press = time.time()
                 pywinauto.keyboard.send_keys(self.pywinmap[keys[0]], pause=0)
                 self.last_press = time.time()
@@ -274,9 +380,11 @@ class KeyHandler:
         print("reset")
         self.rep = 1
         self.curr_mods.remove(self.mods[0])
+        self.mouse_is_down = False
         return True
 
     def mouse_reset(self):
+        self.mouse_is_down = False
         self.m_cmps.clear()
         self.s_cmps.clear()
         if self.m_thread:
@@ -284,7 +392,9 @@ class KeyHandler:
         if self.s_thread:
             self.s_thread.join()
         self.m_thread, self.s_thread = None, None
-        self.curr_mods.remove(self.mods[2])
+        for mod in range(2, 4):
+            if self.mods[mod] in self.curr_mods:
+                self.curr_mods.remove(self.mods[mod])
         return True
 
     def hard_reset(self):
@@ -293,6 +403,7 @@ class KeyHandler:
         self.rep = 1
         self.curr_mods.clear()
         self.mouse_reset()
+        self.reset()
         return True
 
     def esc_check(self):
@@ -302,9 +413,12 @@ class KeyHandler:
         return True
 
     def mouse_down(self, button):
-        pyautogui.mouseDown(button=button)
+        if not self.mouse_is_down:
+            pyautogui.mouseDown(button=button)
+        self.mouse_is_down = True
 
     def mouse_up(self, button):
+        self.mouse_is_down = False
         pyautogui.mouseUp(button=button)
 
     def mouse_move(self):
@@ -319,7 +433,9 @@ class KeyHandler:
 
             vx, vy = [sum(x) for x in zip(*self.m_cmps)]
             lock.release()
-            mag = math.sqrt(vx * vx + vy * vy) / 6 / (1 + 4 * (self.mods[1] not in self.curr_mods))
+            mag = math.sqrt(vx * vx + vy * vy) / 6 + (
+                1 + 4 * (self.mods[1] not in self.curr_mods)
+            )
 
             if mag > 0:
                 pyautogui.move(vx / mag, vy / mag)
@@ -364,15 +480,25 @@ class KeyHandler:
 
     def mouse_jump(self, x, y):
         m = self.curr_monitor()
-        pyautogui.moveTo(m.x + (x + 1) * m.width / 5, m.y + (y + 1) * m.height / 4)
+        if m is None:
+            return
+        pyautogui.moveTo(
+            m.x + (x + 1) * m.width / 5,
+            m.y + (y + 1) * m.height / 4,
+        )
 
     def mouse_toggle_screen(self):
         m = self.curr_monitor()
+        if m is None:
+            return
         pos = pyautogui.position()
         rel_x, rel_y = (pos[0] - m.x) / m.width, (pos[1] - m.y) / m.height
         monitors = screeninfo.get_monitors()
         next_m = monitors[(monitors.index(m) + 1) % len(monitors)]
-        pyautogui.moveTo(next_m.x + rel_x * next_m.width, next_m.y + rel_y * next_m.height)
+        pyautogui.moveTo(
+            next_m.x + rel_x * next_m.width,
+            next_m.y + rel_y * next_m.height,
+        )
 
     def exit(self):
         if self.done:
@@ -380,7 +506,9 @@ class KeyHandler:
         self.done = True
         self.alarm_clock.save()
         pid = os.getpid()
-        thread = threading.Thread(target=lambda: (time.sleep(0.1), os.kill(pid, signal.SIGTERM)))
+        thread = threading.Thread(
+            target=lambda: (time.sleep(0.1), os.kill(pid, signal.SIGTERM))
+        )
         thread.start()
 
     def restart(self):
