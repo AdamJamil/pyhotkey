@@ -450,9 +450,7 @@ class KeyHandler:
 
             slow = self.mods[1] in mods
             vx, vy = [sum(x) for x in zip(*cmps)]
-            mag = (
-                math.sqrt(vx * vx + vy * vy)
-            )
+            mag = math.sqrt(vx * vx + vy * vy)
 
             if mag > 0:
                 monitor = self.curr_monitor()
@@ -520,7 +518,7 @@ class KeyHandler:
 
     def exit(self):
         if self.done:
-            return True
+            return
         self.done = True
 
         if self.alarm_clock:
