@@ -46,6 +46,7 @@ class KeyHandler:
         self.s_cmps = set()
         self.mouse_is_down = False
         self.lock = threading.Lock()
+        self.monitors = screeninfo.get_monitors()
 
         self.alarm_clock = AlarmClock() if platform.system() == "Windows" else None
         self.done = False
@@ -394,6 +395,7 @@ class KeyHandler:
         self.rep = 1
         self.curr_mods.remove(self.mods[0])
         self.mouse_is_down = False
+        self.monitors = screeninfo.get_monitors()
         return True
 
     def mouse_reset(self):
@@ -490,7 +492,7 @@ class KeyHandler:
 
     def curr_monitor(self):
         pos = pyautogui.position()
-        for m in screeninfo.get_monitors():
+        for m in self.monitors:
             if m.x <= pos[0] < m.x + m.width and m.y <= pos[1] < m.y + m.height:
                 return m
 
