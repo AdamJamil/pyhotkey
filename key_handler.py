@@ -435,6 +435,9 @@ class KeyHandler:
         pyautogui.mouseUp(button=button)
 
     def mouse_move(self):
+        last = time.perf_counter()
+        base_speed = 25 * 100 / 3840  # percentage of screen per second
+
         while True:
             time.sleep(0.01)
             with self.lock:
@@ -450,9 +453,13 @@ class KeyHandler:
             )
 
             if mag > 0:
-                speed = 15 if slow else 45
-                scale = speed / mag
+                monitor = self.curr_monitor()
+                px_per_s = monitor.width * base_speed
+                speed = px_per_s / (3 if slow else 1)
+                dist = speed * (time.perf_counter() - last)
+                scale = dist / mag
                 pyautogui.moveRel(vx * scale, vy * scale)
+            last = time.perf_counter()
 
     def scroll_move(self):
         while True:
