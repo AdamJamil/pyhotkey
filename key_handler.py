@@ -5,7 +5,7 @@ import threading
 import math
 from itertools import chain, combinations
 import cli
-from existing_state import ExistingState
+from state import State
 from monitor import curr_monitor
 from run_cmd import RunCMDThread
 import os
@@ -43,7 +43,6 @@ class KeyHandler:
         self.curr_mods = set()
         self.m_thread = None
         self.s_thread = None
-        self.m_cmps = set()
         self.s_cmps = set()
         self.mouse_is_down = False
         self.lock = threading.Lock()
@@ -206,12 +205,12 @@ class KeyHandler:
         for key in filter(lambda x: RRT in x, self.binds_down.keys()):
             for char in move_map.keys():
                 self.binds_down[key][char] = [
-                    self.key_add,
-                    [move_map[char], self.m_cmps, "m_thread", self.mouse_move],
+                    self.mouse_key_add,
+                    [move_map[char]],
                 ]
                 self.binds_up[key][char] = [
-                    self.key_remove,
-                    [move_map[char], self.m_cmps, "m_thread"],
+                    self.mouse_key_remove,
+                    [move_map[char]],
                 ]
             for char in scroll_map.keys():
                 self.binds_down[key][char] = [
@@ -229,12 +228,12 @@ class KeyHandler:
         for key in filter(lambda x: LLT in x, self.binds_down.keys()):
             for char in move_map.keys():
                 self.binds_down[key][char] = [
-                    self.key_add,
-                    [move_map[char], self.m_cmps, "m_thread", self.mouse_move],
+                    self.mouse_key_add,
+                    [move_map[char]],
                 ]
                 self.binds_up[key][char] = [
-                    self.key_remove,
-                    [move_map[char], self.m_cmps, "m_thread"],
+                    self.mouse_key_remove,
+                    [move_map[char]],
                 ]
             for char in scroll_map.keys():
                 self.binds_down[key][char] = [
@@ -336,13 +335,13 @@ class KeyHandler:
         self.rep = 1
         self.curr_mods.remove(CAPS)
         self.mouse_is_down = False
-        self.existing_state.update_monitors()
+        State.update_monitors()
 
         return True
 
     def mouse_reset(self):
         self.mouse_is_down = False
-        self.m_cmps.clear()
+        State.reset_mouse_direction()
         self.s_cmps.clear()
         if self.m_thread:
             self.m_thread.join()
@@ -384,13 +383,12 @@ class KeyHandler:
 
         while True:
             with self.lock:
-                if not self.m_cmps:
+                if not State.any_mouse_direction_held():
                     break
-                cmps = set(self.m_cmps)
                 mods = set(self.curr_mods)
 
             slow = RLT in mods
-            vx, vy = [sum(x) for x in zip(*cmps)]
+            vx, vy = State.get_resultant_mouse_direction()
             mag = math.sqrt(vx * vx + vy * vy)
 
             if mag > 0:
@@ -415,6 +413,25 @@ class KeyHandler:
             pyautogui.scroll(mag)
 
             time.sleep(0.01)
+
+    def mouse_key_add(self, key):
+        t = None
+        with self.lock:
+            State.add_mouse_direction(*key)
+
+            if State._mouse_move_thread is None:
+                State._mouse_move_thread = threading.Thread(
+                    target=self.mouse_move, daemon=True
+                )
+                State._mouse_move_thread.start()
+        if t:
+            t.start()
+
+    def mouse_key_remove(self, key):
+        with self.lock:
+            State.remove_mouse_direction(*key)
+            if not State.any_mouse_direction_held():
+                State._mouse_move_thread = None
 
     def key_add(self, key, container, thread_name, thread_fxn):
         t = None
@@ -447,7 +464,7 @@ class KeyHandler:
             return
         pos = pyautogui.position()
         rel_x, rel_y = (pos[0] - m.x) / m.width, (pos[1] - m.y) / m.height
-        monitors = ExistingState.monitors
+        monitors = State.monitors
         next_m = monitors[(monitors.index(m) + 1) % len(monitors)]
         pyautogui.moveTo(
             next_m.x + rel_x * next_m.width,

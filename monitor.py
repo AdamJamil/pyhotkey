@@ -1,9 +1,9 @@
 import pyautogui
-from existing_state import ExistingState
+from state import State
 
 
 def curr_monitor():
     pos = pyautogui.position()
-    for m in ExistingState.monitors:
+    for m in State.monitors:
         if m.x <= pos[0] < m.x + m.width and m.y <= pos[1] < m.y + m.height:
             return m
