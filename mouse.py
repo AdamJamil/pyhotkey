@@ -7,7 +7,7 @@ from state import State
 
 
 def mouse_down(button):
-    if not State.LMB_held:
+    if not State.LMB_held:  # TODO: this is wrong
         pyautogui.mouseDown(button=button)
     State.LMB_held = True
 

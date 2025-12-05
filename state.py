@@ -17,7 +17,8 @@ class State:
     __scroll_directions: Set[int] = set()
     _scroll_move_thread: Union[threading.Thread] = None
 
-    LMB_held: bool = False
+    # "left", "right", or "middle"
+    __held_mouse_buttons: Set[str] = set()
 
     # this should take on values from MODIFIERS
     __held_modifiers: Set[str] = set()
@@ -31,7 +32,37 @@ class State:
         with State.lock:
             State.monitors = screeninfo.get_monitors()
 
-    # ======================== Mouse related methods ========================
+    # ======================== Mouse button related methods ========================
+
+    @staticmethod
+    def add_mouse_direction(x: int, y: int):
+        with State.lock:
+            State.__mouse_directions.add((x, y))
+
+    @staticmethod
+    def remove_mouse_direction(x: int, y: int):
+        with State.lock:
+            if (x, y) in State.__mouse_directions:
+                State.__mouse_directions.remove((x, y))
+
+    @staticmethod
+    def reset_mouse_direction():
+        with State.lock:
+            State.__mouse_directions = set()
+
+    @staticmethod
+    def any_mouse_direction_held() -> bool:
+        with State.lock:
+            return bool(State.__mouse_directions)
+
+    @staticmethod
+    def get_resultant_mouse_direction() -> Tuple[int, int]:
+        with State.lock:
+            if not State.__mouse_directions:
+                return (0, 0)
+            return [sum(val) for val in zip(*State.__mouse_directions)]
+
+    # ======================== Mouse movement related methods ========================
 
     @staticmethod
     def add_mouse_direction(x: int, y: int):
