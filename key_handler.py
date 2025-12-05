@@ -40,7 +40,6 @@ class KeyHandler:
         self.last_press = time.time()
         self.last_esc = time.time()
         self.rep = 1
-        self.curr_mods = set()
         self.m_thread = None
         self.s_thread = None
         self.mouse_is_down = False
@@ -267,19 +266,11 @@ class KeyHandler:
                 [i],
             ]
 
-        def mod_add(mod):
-            with self.lock:
-                self.curr_mods.add(mod)
-
-        def mod_remove(mod):
-            with self.lock:
-                self.curr_mods.discard(mod)
-
         # insert and remove modifiers
         for key in self.binds_down.keys():
             for modifier in MODIFIERS:
-                self.binds_down[key][modifier] = [mod_add, [modifier]]
-                self.binds_up[key][modifier] = [mod_remove, [modifier]]
+                self.binds_down[key][modifier] = [State.add_modifier, [modifier]]
+                self.binds_up[key][modifier] = [State.remove_modifier, [modifier]]
 
         # soft and mouse reset
         for key in self.binds_up.keys():
@@ -294,13 +285,13 @@ class KeyHandler:
     def key_down(self, event):
         if time.time() - self.last_press < 0.001:
             return True
-        value = self.binds_down[frozenset(self.curr_mods)][event.Key]
+        value = self.binds_down[frozenset(State.get_held_modifiers())][event.Key]
         return type(value[0](*value[1])) == bool
 
     def key_up(self, event):
-        value = self.binds_up[frozenset(self.curr_mods)][event.Key]
+        value = self.binds_up[frozenset(State.get_held_modifiers())][event.Key]
         if DEBUG_MODE:
-            print(event, self.curr_mods)
+            print(event, State.get_held_modifiers())
         return type(value[0](*value[1])) == bool
 
     pywinmap = {
@@ -332,7 +323,7 @@ class KeyHandler:
         if DEBUG_MODE:
             print("reset")
         self.rep = 1
-        self.curr_mods.remove(CAPS)
+        State.remove_modifier(CAPS)
         self.mouse_is_down = False
         State.update_monitors()
 
@@ -348,15 +339,14 @@ class KeyHandler:
             self.s_thread.join()
         self.m_thread, self.s_thread = None, None
         for mod in (LLT, RRT):
-            if mod in self.curr_mods:
-                self.curr_mods.remove(mod)
+            State.remove_modifier(mod)
         return True
 
     def hard_reset(self):
         self.last_press = time.time()
         self.last_esc = time.time()
         self.rep = 1
-        self.curr_mods.clear()
+        State.reset_modifiers()
         self.mouse_reset()
         self.reset()
         return True
@@ -368,12 +358,12 @@ class KeyHandler:
         return True
 
     def mouse_down(self, button):
-        if not self.mouse_is_down:
+        if not State.LMB_held:
             pyautogui.mouseDown(button=button)
-        self.mouse_is_down = True
+        State.LMB_held = True
 
     def mouse_up(self, button):
-        self.mouse_is_down = False
+        State.LMB_held = False
         pyautogui.mouseUp(button=button)
 
     def mouse_move(self):
@@ -381,12 +371,10 @@ class KeyHandler:
         base_speed = 25 * 100 / 3840  # percentage of screen per second
 
         while True:
-            with self.lock:
-                if not State.any_mouse_direction_held():
-                    break
-                mods = set(self.curr_mods)
+            if not State.any_mouse_direction_held():
+                break
 
-            slow = RLT in mods
+            slow = RLT in State.get_held_modifiers()
             vx, vy = State.get_resultant_mouse_direction()
             mag = math.sqrt(vx * vx + vy * vy)
 
@@ -408,7 +396,7 @@ class KeyHandler:
                     break
 
                 vy = State.get_resultant_scroll_direction()
-                mag = -vy * (30 if RLT not in self.curr_mods else 10)
+                mag = -vy * (30 if RLT not in State.get_held_modifiers() else 10)
             pyautogui.scroll(mag)
 
             time.sleep(0.01)

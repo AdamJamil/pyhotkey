@@ -17,6 +17,11 @@ class State:
     __scroll_directions: Set[int] = set()
     _scroll_move_thread: Union[threading.Thread] = None
 
+    LMB_held: bool = False
+
+    # this should take on values from MODIFIERS
+    __held_modifiers: Set[str] = set()
+
     @staticmethod
     def init():
         State.update_monitors()
@@ -85,6 +90,29 @@ class State:
             if not State.__scroll_directions:
                 return 0
             return sum(State.__scroll_directions)
+
+    # ======================== Modifier related methods ========================
+
+    @staticmethod
+    def add_modifier(mod: str):
+        with State.lock:
+            State.__held_modifiers.add(mod)
+
+    @staticmethod
+    def remove_modifier(mod: str):
+        with State.lock:
+            if mod in State.__held_modifiers:
+                State.__held_modifiers.remove(mod)
+
+    @staticmethod
+    def reset_modifiers():
+        with State.lock:
+            State.__held_modifiers = set()
+
+    @staticmethod
+    def get_held_modifiers() -> Set[str]:
+        with State.lock:
+            return set(State.__held_modifiers)
 
 
 State.init()
