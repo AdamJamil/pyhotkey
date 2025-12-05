@@ -5,6 +5,8 @@ import threading
 import math
 from itertools import chain, combinations
 import cli
+from existing_state import ExistingState
+from monitor import curr_monitor
 from run_cmd import RunCMDThread
 import os
 import signal
@@ -14,7 +16,16 @@ import subprocess
 import pyautogui
 import screeninfo
 from codeforces import put_code
-from constants import DEBUG_MODE, CAPS, RLT, RRT, LLT, MODIFIERS, OPEN_BRACKET, CLOSE_BRACKET
+from constants import (
+    DEBUG_MODE,
+    CAPS,
+    RLT,
+    RRT,
+    LLT,
+    MODIFIERS,
+    OPEN_BRACKET,
+    CLOSE_BRACKET,
+)
 
 
 import pywinauto.keyboard
@@ -36,7 +47,6 @@ class KeyHandler:
         self.s_cmps = set()
         self.mouse_is_down = False
         self.lock = threading.Lock()
-        self.monitors = screeninfo.get_monitors()
 
         self.done = False
 
@@ -326,7 +336,8 @@ class KeyHandler:
         self.rep = 1
         self.curr_mods.remove(CAPS)
         self.mouse_is_down = False
-        self.monitors = screeninfo.get_monitors()
+        self.existing_state.update_monitors()
+
         return True
 
     def mouse_reset(self):
@@ -383,7 +394,7 @@ class KeyHandler:
             mag = math.sqrt(vx * vx + vy * vy)
 
             if mag > 0:
-                monitor = self.curr_monitor()
+                monitor = curr_monitor()
                 px_per_s = monitor.width * base_speed
                 speed = px_per_s / (3 if slow else 1)
                 dist = speed * (time.perf_counter() - last)
@@ -421,14 +432,8 @@ class KeyHandler:
             if not container:
                 setattr(self, thread_name, None)
 
-    def curr_monitor(self):
-        pos = pyautogui.position()
-        for m in self.monitors:
-            if m.x <= pos[0] < m.x + m.width and m.y <= pos[1] < m.y + m.height:
-                return m
-
     def mouse_jump(self, x, y):
-        m = self.curr_monitor()
+        m = curr_monitor()
         if m is None:
             return
         pyautogui.moveTo(
@@ -437,12 +442,12 @@ class KeyHandler:
         )
 
     def mouse_toggle_screen(self):
-        m = self.curr_monitor()
+        m = curr_monitor()
         if m is None:
             return
         pos = pyautogui.position()
         rel_x, rel_y = (pos[0] - m.x) / m.width, (pos[1] - m.y) / m.height
-        monitors = screeninfo.get_monitors()
+        monitors = ExistingState.monitors
         next_m = monitors[(monitors.index(m) + 1) % len(monitors)]
         pyautogui.moveTo(
             next_m.x + rel_x * next_m.width,
