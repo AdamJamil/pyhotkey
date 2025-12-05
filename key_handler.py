@@ -40,10 +40,7 @@ class KeyHandler:
         self.last_press = time.time()
         self.last_esc = time.time()
         self.rep = 1
-        self.m_thread = None
-        self.s_thread = None
         self.mouse_is_down = False
-        self.lock = threading.Lock()
 
         self.done = False
 
@@ -333,11 +330,6 @@ class KeyHandler:
         self.mouse_is_down = False
         State.reset_mouse_direction()
         State.reset_scroll_direction()
-        if self.m_thread:
-            self.m_thread.join()
-        if self.s_thread:
-            self.s_thread.join()
-        self.m_thread, self.s_thread = None, None
         for mod in (LLT, RRT):
             State.remove_modifier(mod)
         return True
@@ -391,47 +383,42 @@ class KeyHandler:
 
     def scroll_move(self):
         while True:
-            with self.lock:
-                if not State.any_scroll_direction_held():
-                    break
+            if not State.any_scroll_direction_held():
+                break
 
-                vy = State.get_resultant_scroll_direction()
-                mag = -vy * (30 if RLT not in State.get_held_modifiers() else 10)
+            vy = State.get_resultant_scroll_direction()
+            mag = -vy * (30 if RLT not in State.get_held_modifiers() else 10)
             pyautogui.scroll(mag)
 
             time.sleep(0.01)
 
     def mouse_key_add(self, key):
-        with self.lock:
-            State.add_mouse_direction(*key)
+        State.add_mouse_direction(*key)
 
-            if State._mouse_move_thread is None:
-                State._mouse_move_thread = threading.Thread(
-                    target=self.mouse_move, daemon=True
-                )
-                State._mouse_move_thread.start()
+        if State._mouse_move_thread is None:
+            State._mouse_move_thread = threading.Thread(
+                target=self.mouse_move, daemon=True
+            )
+            State._mouse_move_thread.start()
 
     def mouse_key_remove(self, key):
-        with self.lock:
-            State.remove_mouse_direction(*key)
-            if not State.any_mouse_direction_held():
-                State._mouse_move_thread = None
+        State.remove_mouse_direction(*key)
+        if not State.any_mouse_direction_held():
+            State._mouse_move_thread = None
 
     def scroll_key_add(self, key):
-        with self.lock:
-            State.add_scroll_direction(key)
+        State.add_scroll_direction(key)
 
-            if State._scroll_move_thread is None:
-                State._scroll_move_thread = threading.Thread(
-                    target=self.scroll_move, daemon=True
-                )
-                State._scroll_move_thread.start()
+        if State._scroll_move_thread is None:
+            State._scroll_move_thread = threading.Thread(
+                target=self.scroll_move, daemon=True
+            )
+            State._scroll_move_thread.start()
 
     def scroll_key_remove(self, key):
-        with self.lock:
-            State.remove_scroll_direction(key)
-            if not State.any_scroll_direction_held():
-                State._scroll_move_thread = None
+        State.remove_scroll_direction(key)
+        if not State.any_scroll_direction_held():
+            State._scroll_move_thread = None
 
     def mouse_jump(self, x, y):
         m = curr_monitor()
