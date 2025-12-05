@@ -1,6 +1,5 @@
 from collections import defaultdict as ddict, namedtuple
 from functools import partial
-from alarm_clock import AlarmClock
 import time
 import threading
 import math
@@ -39,7 +38,6 @@ class KeyHandler:
         self.lock = threading.Lock()
         self.monitors = screeninfo.get_monitors()
 
-        self.alarm_clock = AlarmClock()
         self.done = False
 
         default = [lambda: True, []]
@@ -66,7 +64,7 @@ class KeyHandler:
                         "Y": [press, ["end"]],
                         "H": [press, ["home"]],
                         "Oem_3": [press, ["capslock"]],
-                        "C": [cli.CLIServer, [self.alarm_clock]],
+                        # "C": [cli.CLIServer, [self.alarm_clock]],
                     },
                 ),
                 frozenset([RLT]): ddict(
@@ -456,8 +454,8 @@ class KeyHandler:
             return
         self.done = True
 
-        if self.alarm_clock:
-            self.alarm_clock.save()
+        # if self.alarm_clock:
+        #     self.alarm_clock.save()
 
         threading.Timer(0.1, lambda: os._exit(0)).start()
 
