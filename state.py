@@ -13,6 +13,10 @@ class State:
     __mouse_directions: Set[Tuple[int, int]] = set()
     _mouse_move_thread: Union[threading.Thread] = None
 
+    # set of y values, one for each held key (just up/down), same as mouse
+    __scroll_directions: Set[int] = set()
+    _scroll_move_thread: Union[threading.Thread] = None
+
     @staticmethod
     def init():
         State.update_monitors()
@@ -21,6 +25,8 @@ class State:
     def update_monitors():
         with State.lock:
             State.monitors = screeninfo.get_monitors()
+
+    # ======================== Mouse related methods ========================
 
     @staticmethod
     def add_mouse_direction(x: int, y: int):
@@ -49,6 +55,36 @@ class State:
             if not State.__mouse_directions:
                 return (0, 0)
             return [sum(val) for val in zip(*State.__mouse_directions)]
+
+    # ======================== Scroll related methods ========================
+
+    @staticmethod
+    def add_scroll_direction(y: int):
+        with State.lock:
+            State.__scroll_directions.add(y)
+
+    @staticmethod
+    def remove_scroll_direction(y: int):
+        with State.lock:
+            if y in State.__scroll_directions:
+                State.__scroll_directions.remove(y)
+
+    @staticmethod
+    def reset_scroll_direction():
+        with State.lock:
+            State.__scroll_directions = set()
+
+    @staticmethod
+    def any_scroll_direction_held() -> bool:
+        with State.lock:
+            return bool(State.__scroll_directions)
+
+    @staticmethod
+    def get_resultant_scroll_direction() -> int:
+        with State.lock:
+            if not State.__scroll_directions:
+                return 0
+            return sum(State.__scroll_directions)
 
 
 State.init()
