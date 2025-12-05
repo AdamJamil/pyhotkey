@@ -5,6 +5,7 @@ import threading
 import math
 from itertools import chain, combinations
 import cli
+from mouse import mouse_down, mouse_jump, mouse_move, mouse_toggle_screen, mouse_up, scroll_move
 from state import State
 from monitor import curr_monitor
 from run_cmd import RunCMDThread
@@ -40,7 +41,6 @@ class KeyHandler:
         self.last_press = time.time()
         self.last_esc = time.time()
         self.rep = 1
-        self.mouse_is_down = False
 
         self.done = False
 
@@ -108,20 +108,20 @@ class KeyHandler:
                 frozenset([RRT]): ddict(
                     lambda: default,
                     {
-                        "R": [self.mouse_down, ["left"]],
-                        "3": [self.mouse_down, ["middle"]],
-                        "W": [self.mouse_down, ["right"]],
+                        "R": [mouse_down, ["left"]],
+                        "3": [mouse_down, ["middle"]],
+                        "W": [mouse_down, ["right"]],
                         "T": [pyautogui.scroll, [-3]],
                         "G": [pyautogui.scroll, [3]],
-                        "H": [self.mouse_toggle_screen, []],
+                        "H": [mouse_toggle_screen, []],
                     },
                 ),
                 frozenset([LLT]): ddict(
                     lambda: default,
                     {
-                        "E": [self.mouse_down, ["left"]],
-                        "2": [self.mouse_down, ["middle"]],
-                        "Q": [self.mouse_down, ["right"]],
+                        "E": [mouse_down, ["left"]],
+                        "2": [mouse_down, ["middle"]],
+                        "Q": [mouse_down, ["right"]],
                         "W": [pyautogui.scroll, [-6]],
                         "S": [pyautogui.scroll, [6]],
                     },
@@ -129,10 +129,10 @@ class KeyHandler:
                 frozenset([RLT, RRT]): ddict(
                     lambda: default,
                     {
-                        "R": [self.mouse_down, ["left"]],
-                        "3": [self.mouse_down, ["middle"]],
-                        "W": [self.mouse_down, ["right"]],
-                        "H": [self.mouse_toggle_screen, []],
+                        "R": [mouse_down, ["left"]],
+                        "3": [mouse_down, ["middle"]],
+                        "W": [mouse_down, ["right"]],
+                        "H": [mouse_toggle_screen, []],
                     },
                 ),
                 frozenset([CAPS, RLT, RRT]): ddict(
@@ -152,26 +152,26 @@ class KeyHandler:
                 frozenset([RRT]): ddict(
                     lambda: default,
                     {
-                        "R": [self.mouse_up, ["left"]],
-                        "3": [self.mouse_up, ["middle"]],
-                        "W": [self.mouse_up, ["right"]],
+                        "R": [mouse_up, ["left"]],
+                        "3": [mouse_up, ["middle"]],
+                        "W": [mouse_up, ["right"]],
                     },
                 ),
                 frozenset([LLT]): ddict(
                     lambda: default,
                     {
-                        "E": [self.mouse_up, ["left"]],
-                        "2": [self.mouse_up, ["middle"]],
-                        "Q": [self.mouse_up, ["right"]],
+                        "E": [mouse_up, ["left"]],
+                        "2": [mouse_up, ["middle"]],
+                        "Q": [mouse_up, ["right"]],
                     },
                 ),
                 frozenset([RLT]): ddict(lambda: default, {}),
                 frozenset([RRT, RLT]): ddict(
                     lambda: default,
                     {
-                        "R": [self.mouse_up, ["left"]],
-                        "3": [self.mouse_up, ["middle"]],
-                        "W": [self.mouse_up, ["right"]],
+                        "R": [mouse_up, ["left"]],
+                        "3": [mouse_up, ["middle"]],
+                        "W": [mouse_up, ["right"]],
                     },
                 ),
             },
@@ -250,7 +250,7 @@ class KeyHandler:
         }
         for key in filter(lambda x: RRT in x, self.binds_down.keys()):
             for char in jump_map.keys():
-                self.binds_down[key][char] = [self.mouse_jump, jump_map[char]]
+                self.binds_down[key][char] = [mouse_jump, jump_map[char]]
 
         # allow for repetition
         for i in range(1, 10):
@@ -321,13 +321,13 @@ class KeyHandler:
             print("reset")
         self.rep = 1
         State.remove_modifier(CAPS)
-        self.mouse_is_down = False
+        self.LMB_held = False
         State.update_monitors()
 
         return True
 
     def mouse_reset(self):
-        self.mouse_is_down = False
+        State.LMB_held = False
         State.reset_mouse_direction()
         State.reset_scroll_direction()
         for mod in (LLT, RRT):
@@ -349,55 +349,12 @@ class KeyHandler:
         self.last_esc = time.time()
         return True
 
-    def mouse_down(self, button):
-        if not State.LMB_held:
-            pyautogui.mouseDown(button=button)
-        State.LMB_held = True
-
-    def mouse_up(self, button):
-        State.LMB_held = False
-        pyautogui.mouseUp(button=button)
-
-    def mouse_move(self):
-        last = time.perf_counter()
-        base_speed = 25 * 100 / 3840  # percentage of screen per second
-
-        while True:
-            if not State.any_mouse_direction_held():
-                break
-
-            slow = RLT in State.get_held_modifiers()
-            vx, vy = State.get_resultant_mouse_direction()
-            mag = math.sqrt(vx * vx + vy * vy)
-
-            if mag > 0:
-                monitor = curr_monitor()
-                px_per_s = monitor.width * base_speed
-                speed = px_per_s / (3 if slow else 1)
-                dist = speed * (time.perf_counter() - last)
-                scale = dist / mag
-                pyautogui.moveRel(vx * scale, vy * scale)
-            last = time.perf_counter()
-
-            time.sleep(0.01)
-
-    def scroll_move(self):
-        while True:
-            if not State.any_scroll_direction_held():
-                break
-
-            vy = State.get_resultant_scroll_direction()
-            mag = -vy * (30 if RLT not in State.get_held_modifiers() else 10)
-            pyautogui.scroll(mag)
-
-            time.sleep(0.01)
-
     def mouse_key_add(self, key):
         State.add_mouse_direction(*key)
 
         if State._mouse_move_thread is None:
             State._mouse_move_thread = threading.Thread(
-                target=self.mouse_move, daemon=True
+                target=mouse_move, daemon=True
             )
             State._mouse_move_thread.start()
 
@@ -411,7 +368,7 @@ class KeyHandler:
 
         if State._scroll_move_thread is None:
             State._scroll_move_thread = threading.Thread(
-                target=self.scroll_move, daemon=True
+                target=scroll_move, daemon=True
             )
             State._scroll_move_thread.start()
 
@@ -419,28 +376,6 @@ class KeyHandler:
         State.remove_scroll_direction(key)
         if not State.any_scroll_direction_held():
             State._scroll_move_thread = None
-
-    def mouse_jump(self, x, y):
-        m = curr_monitor()
-        if m is None:
-            return
-        pyautogui.moveTo(
-            m.x + (x + 1) * m.width / 5,
-            m.y + (y + 1) * m.height / 4,
-        )
-
-    def mouse_toggle_screen(self):
-        m = curr_monitor()
-        if m is None:
-            return
-        pos = pyautogui.position()
-        rel_x, rel_y = (pos[0] - m.x) / m.width, (pos[1] - m.y) / m.height
-        monitors = State.monitors
-        next_m = monitors[(monitors.index(m) + 1) % len(monitors)]
-        pyautogui.moveTo(
-            next_m.x + rel_x * next_m.width,
-            next_m.y + rel_y * next_m.height,
-        )
 
     def exit(self):
         if self.done:
