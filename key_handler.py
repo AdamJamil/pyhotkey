@@ -108,6 +108,20 @@ class KeyHandler:
                 "T": [self.scroll_key_add, [-1]],
                 "G": [self.scroll_key_add, [1]],
             },
+            (RLT, RRT,): {
+                "E": [self.mouse_key_add, [(0, -1)]],
+                "S": [self.mouse_key_add, [(-1, 0)]],
+                "D": [self.mouse_key_add, [(0, 1)]],
+                "F": [self.mouse_key_add, [(1, 0)]],
+                "R": [mouse_down, ["left"]],
+                "3": [mouse_down, ["middle"]],
+                "W": [mouse_down, ["right"]],
+                # "T": [pyautogui.scroll, [-3]],
+                # "G": [pyautogui.scroll, [3]],
+                "H": mouse_toggle_screen,
+                "T": [self.scroll_key_add, [-1]],
+                "G": [self.scroll_key_add, [1]],
+            },
             (LLT,): {
                 "E": [mouse_down, ["left"]],
                 "2": [mouse_down, ["middle"]],
@@ -116,12 +130,6 @@ class KeyHandler:
                 # "S": [pyautogui.scroll, [6]],
                 "W": [self.scroll_key_add, [-1]],
                 "S": [self.scroll_key_add, [1]],
-            },
-            (RLT, RRT): {
-                "R": [mouse_down, ["left"]],
-                "3": [mouse_down, ["middle"]],
-                "W": [mouse_down, ["right"]],
-                "H": mouse_toggle_screen,
             },
             (CAPS, RLT, RRT): {
                 "Q": self.exit,
@@ -141,17 +149,23 @@ class KeyHandler:
                 "T": [self.scroll_key_remove, [-1]],
                 "G": [self.scroll_key_remove, [1]],
             },
+            (RLT, RRT,): {
+                "E": [self.mouse_key_remove, [(0, -1)]],
+                "S": [self.mouse_key_remove, [(-1, 0)]],
+                "D": [self.mouse_key_remove, [(0, 1)]],
+                "F": [self.mouse_key_remove, [(1, 0)]],
+                "R": [mouse_up, ["left"]],
+                "3": [mouse_up, ["middle"]],
+                "W": [mouse_up, ["right"]],
+                "T": [self.scroll_key_remove, [-1]],
+                "G": [self.scroll_key_remove, [1]],
+            },
             (LLT,): {
                 "E": [mouse_up, ["left"]],
                 "2": [mouse_up, ["middle"]],
                 "Q": [mouse_up, ["right"]],
                 "W": [self.scroll_key_remove, [-1]],
                 "S": [self.scroll_key_remove, [1]],
-            },
-            (RRT, RLT): {
-                "R": [mouse_up, ["left"]],
-                "3": [mouse_up, ["middle"]],
-                "W": [mouse_up, ["right"]],
             },
         }
 
@@ -225,7 +239,6 @@ class KeyHandler:
             return False
 
         modifiers = tuple(sorted(State.get_held_modifiers()))
-        print("up", event.Key, modifiers)
         if modifiers not in self.up_hotkeys:
             return True  # TODO: implement partial matching
 
