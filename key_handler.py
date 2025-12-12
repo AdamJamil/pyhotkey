@@ -14,7 +14,7 @@ from mouse import (
     scroll_move,
 )
 from state import State
-from monitor import curr_monitor
+from monitor import change_brightness, curr_monitor
 from run_cmd import RunCMDThread
 import os
 import signal
@@ -65,6 +65,12 @@ class KeyHandler:
                 "O": ["ctrl", "right"],
                 "Y": "end",
                 "H": "home",
+                "A": [change_brightness, [0, 5]],
+                "Z": [change_brightness, [0, -5]],
+                "S": [change_brightness, [1, 5]],
+                "X": [change_brightness, [1, -5]],
+                "D": [change_brightness, [2, 5]],
+                "C": [change_brightness, [2, -5]],
             },
             (RLT,): {
                 "A": "[",
@@ -82,7 +88,6 @@ class KeyHandler:
                 "Q": "volumemute",
                 "W": "volumedown",
                 "E": "volumeup",
-                "C": put_code,
             },
             (CAPS, RLT): {
                 "I": ["shift", "up"],
