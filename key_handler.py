@@ -88,6 +88,7 @@ class KeyHandler:
                 "Q": "volumemute",
                 "W": "volumedown",
                 "E": "volumeup",
+                "Tab": self.alt_tab_down,
             },
             (CAPS, RLT): {
                 "I": ["shift", "up"],
@@ -240,6 +241,10 @@ class KeyHandler:
                 self.reset()
             elif event.Key in (RRT, LLT):
                 self.mouse_reset()
+            elif event.Key == RLT:
+                if State.is_alt_held():
+                    pyautogui.keyUp("alt")
+                    State.release_alt()
 
             return False
 
@@ -346,6 +351,12 @@ class KeyHandler:
         State.remove_scroll_direction(key)
         if not State.any_scroll_direction_held():
             State._scroll_move_thread = None
+
+    def alt_tab_down(self):
+        if not State.is_alt_held():
+            pyautogui.keyDown("alt")
+            State.hold_alt()
+        pyautogui.press("tab")
 
     def exit(self):
         if self.done:

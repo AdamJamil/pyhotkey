@@ -17,6 +17,9 @@ class State:
     __scroll_directions: Set[int] = set()
     _scroll_move_thread: Union[threading.Thread] = None
 
+    # if alt is held (for special alt-tab hotkey)
+    __alt_held: bool = False
+
     # "left", "right", or "middle"
     __held_mouse_buttons: Set[str] = set()
 
@@ -144,6 +147,23 @@ class State:
     def get_held_modifiers() -> Set[str]:
         with State.lock:
             return set(State.__held_modifiers)
+
+    # ======================== Alt-tab related methods ========================
+
+    @staticmethod
+    def hold_alt():
+        with State.lock:
+            State.__alt_held = True
+
+    @staticmethod
+    def release_alt():
+        with State.lock:
+            State.__alt_held = False
+
+    @staticmethod
+    def is_alt_held():
+        with State.lock:
+            return State.__alt_held
 
 
 State.init()
