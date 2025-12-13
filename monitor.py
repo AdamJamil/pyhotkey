@@ -19,23 +19,25 @@ def curr_monitor():
         if m.x <= pos[0] < m.x + m.width and m.y <= pos[1] < m.y + m.height:
             return m
 
+_TWINKLE = r"C:\Users\adama\AppData\Local\Programs\twinkle-tray\Twinkle Tray.exe"
+_NO_WINDOW = 0x08000000
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 def _strip_ansi(s: str) -> str:
     return _ANSI_RE.sub("", s)
 
-
-def _run_quiet(args):
-    # no capture_output -> much faster + less overhead
-    return subprocess.run(
-        args,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+def _twinkle_running() -> bool:
+    # avoids extra deps like psutil
+    p = subprocess.run(
+        ["tasklist", "/FI", "IMAGENAME eq Twinkle Tray.exe"],
+        text=True,
+        capture_output=True,
         creationflags=_NO_WINDOW,
     )
-
+    return "Twinkle Tray.exe" in (p.stdout or "")
 
 def _parse_list(stdout: str):
-    blocks = re.split(r"\r?\n\r?\n+", stdout.strip())
+    blocks = re.split(r"\r?\n\r?\n+", (stdout or "").strip())
     mons = []
     for b in blocks:
         m = {}
@@ -48,38 +50,42 @@ def _parse_list(stdout: str):
             mons.append(m)
     return mons
 
+def _run_capture(args):
+    return subprocess.run(args, text=True, capture_output=True, creationflags=_NO_WINDOW)
 
-# --- global state ---
-_MONITOR_IDS = []  # idx -> MonitorID
-_Q = queue.Queue()  # (idx, delta)
+def _run_quiet(args):
+    return subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_NO_WINDOW)
 
+_MONITOR_IDS = []
+_Q = queue.Queue()
+_started = False
 
 def init_twinkle_brightness():
-    if not os.path.exists(_TWINKLE):
-        raise FileNotFoundError(_TWINKLE)
+    global _MONITOR_IDS, _started
+    if _started:
+        return
+    _started = True
 
-    p = subprocess.run(
-        [_TWINKLE, "--List"], text=True, capture_output=True, creationflags=_NO_WINDOW
-    )
-    if p.returncode != 0:
-        raise RuntimeError(
-            p.stderr.strip() or p.stdout.strip() or "Twinkle Tray --List failed"
-        )
+    def init_loop():
+        global _MONITOR_IDS
+        while True:
+            if not _twinkle_running():
+                time.sleep(1.0)
+                continue
 
-    mons = _parse_list(p.stdout)
-    ids = [m.get("MonitorID") for m in mons]
-    if any(x is None for x in ids):
-        raise RuntimeError(f"Failed to parse MonitorID(s): {mons}")
+            p = _run_capture([_TWINKLE, "--List"])
+            if p.returncode == 0:
+                mons = _parse_list(p.stdout)
+                ids = [m.get("MonitorID") for m in mons]
+                if ids and all(ids):
+                    _MONITOR_IDS = ids
+                    threading.Thread(target=_worker, daemon=True).start()
+                    return
+            time.sleep(1.0)
 
-    global _MONITOR_IDS
-    _MONITOR_IDS = ids
-
-    # start worker once
-    threading.Thread(target=_worker, daemon=True).start()
-
+    threading.Thread(target=init_loop, daemon=True).start()
 
 def _worker():
-    # batch deltas so holding a key doesn't spawn 60 processes/sec
     pending = [0] * max(1, len(_MONITOR_IDS))
     last_flush = time.time()
 
@@ -92,8 +98,13 @@ def _worker():
             pass
 
         now = time.time()
-        # flush every 80ms if anything pending
         if now - last_flush >= 0.08 and any(pending):
+            # if Twinkle dies, don’t spam-relaunch
+            if not _twinkle_running():
+                pending[:] = [0] * len(pending)
+                time.sleep(0.5)
+                continue
+
             for i, d in enumerate(pending):
                 if d:
                     mon_id = _MONITOR_IDS[i]
@@ -101,9 +112,8 @@ def _worker():
                     pending[i] = 0
             last_flush = now
 
-
 def change_brightness(idx: int, delta: int) -> None:
     _Q.put((idx, delta))
 
-
+# call once (safe)
 init_twinkle_brightness()

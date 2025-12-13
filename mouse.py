@@ -5,6 +5,9 @@ from constants import RLT
 from monitor import curr_monitor
 from state import State
 
+SLOW_MOUSE_SPEED = 4/15
+FAST_MOUSE_SPEED = 4/5
+
 
 def mouse_down(button):
     if not State.LMB_held:  # TODO: this is wrong
@@ -32,13 +35,13 @@ def mouse_move():
         if mag > 0:
             monitor = curr_monitor()
             px_per_s = monitor.width * base_speed
-            speed = px_per_s / (3 if slow else 1)
+            speed = px_per_s * (SLOW_MOUSE_SPEED if slow else FAST_MOUSE_SPEED)
             dist = speed * (time.perf_counter() - last)
             scale = dist / mag
             pyautogui.moveRel(vx * scale, vy * scale)
         last = time.perf_counter()
 
-        time.sleep(0.01)
+        time.sleep(0.001)
 
 
 def scroll_move():
