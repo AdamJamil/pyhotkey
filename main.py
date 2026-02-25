@@ -20,7 +20,7 @@ def main():
     handler = KeyHandler()
     if platform.system() == "Windows":
         speaker = pyttsx3.init()
-        speaker.say("gaming time")
+        # speaker.say("gaming time")
         speaker.runAndWait()
         hm = PyHook3.HookManager()
         hm.KeyDown = handler.key_down
