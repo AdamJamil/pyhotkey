@@ -1,3 +1,16 @@
+import sys
+import pathlib
+from datetime import datetime
+
+# pythonw.exe discards stderr by default; redirect to a log file so crash
+# tracebacks survive. Done before other imports so import-time failures land here too.
+try:
+    _log_path = pathlib.Path(__file__).parent / "stderr.log"
+    sys.stderr = open(_log_path, "a", buffering=1, encoding="utf-8")
+    sys.stderr.write(f"\n=== started {datetime.now().isoformat()} ===\n")
+except Exception:
+    pass
+
 from key_handler import KeyHandler
 import atexit
 

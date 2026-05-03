@@ -137,6 +137,9 @@ class KeyHandler:
                 "W": [self.scroll_key_add, [-1]],
                 "S": [self.scroll_key_add, [1]],
             },
+            (CAPS, RRT): {
+                "H": self.launch_hearth,
+            },
             (CAPS, RLT, RRT): {
                 "Q": self.exit,
                 "R": self.restart,
@@ -371,3 +374,19 @@ class KeyHandler:
     def restart(self):
         subprocess.Popen([sys.executable] + sys.argv, close_fds=True)
         self.exit()
+
+    def launch_hearth(self):
+        # Threaded so the keyboard hook callback returns immediately —
+        # wt.exe is a UWP execution alias and CreateProcess can take long enough
+        # to trip Windows' LowLevelHooksTimeout, leaking the next keypress.
+        def run():
+            try:
+                subprocess.Popen(
+                    ["wt.exe", "-p", "hearth"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    close_fds=True,
+                )
+            except Exception as e:
+                print(f"launch_hearth failed: {e}", file=sys.stderr)
+        threading.Thread(target=run, daemon=True).start()
