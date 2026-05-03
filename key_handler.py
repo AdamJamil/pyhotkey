@@ -137,6 +137,9 @@ class KeyHandler:
                 "W": [self.scroll_key_add, [-1]],
                 "S": [self.scroll_key_add, [1]],
             },
+            (CAPS, RRT): {
+                "H": self.launch_hearth,
+            },
             (CAPS, RLT, RRT): {
                 "Q": self.exit,
                 "R": self.restart,
@@ -209,8 +212,6 @@ class KeyHandler:
 
         if event.Key in MODIFIERS:
             State.add_modifier(event.Key)
-            if event.Key in (CAPS, RRT) and set(State.get_held_modifiers()) == {CAPS, RRT}:
-                self.launch_hearth()
             return False
 
         modifiers = tuple(sorted(State.get_held_modifiers()))
