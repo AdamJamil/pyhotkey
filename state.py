@@ -165,5 +165,27 @@ class State:
         with State.lock:
             return State.__alt_held
 
+    # ======================== Mouse button held methods ========================
+
+    @staticmethod
+    def hold_mouse_button(button: str):
+        with State.lock:
+            State.__held_mouse_buttons.add(button)
+
+    @staticmethod
+    def release_mouse_button(button: str):
+        with State.lock:
+            State.__held_mouse_buttons.discard(button)
+
+    @staticmethod
+    def is_mouse_button_held(button: str) -> bool:
+        with State.lock:
+            return button in State.__held_mouse_buttons
+
+    @staticmethod
+    def reset_mouse_buttons():
+        with State.lock:
+            State.__held_mouse_buttons = set()
+
 
 State.init()

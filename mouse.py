@@ -10,13 +10,13 @@ FAST_MOUSE_SPEED = 4/5
 
 
 def mouse_down(button):
-    if not State.LMB_held:  # TODO: this is wrong
+    if not State.is_mouse_button_held(button):
         pyautogui.mouseDown(button=button)
-    State.LMB_held = True
+    State.hold_mouse_button(button)
 
 
 def mouse_up(button):
-    State.LMB_held = False
+    State.release_mouse_button(button)
     pyautogui.mouseUp(button=button)
 
 
@@ -34,6 +34,12 @@ def mouse_move():
 
         if mag > 0:
             monitor = curr_monitor()
+            if monitor is None:
+                # cursor fell outside all known monitor rects (e.g. stale bounds
+                # right after a resolution toggle); skip this tick, don't crash.
+                last = time.perf_counter()
+                time.sleep(0.001)
+                continue
             px_per_s = monitor.width * base_speed
             speed = px_per_s * (SLOW_MOUSE_SPEED if slow else FAST_MOUSE_SPEED)
             dist = speed * (time.perf_counter() - last)

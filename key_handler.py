@@ -14,13 +14,15 @@ from mouse import (
     scroll_move,
 )
 from state import State
-from monitor import change_brightness, curr_monitor
+from monitor import change_brightness, curr_monitor, toggle_primary_resolution
 from run_cmd import RunCMDThread
 import os
 import signal
 import sys
+import logging
 import pathlib
 import subprocess
+import traceback
 import pyautogui
 import screeninfo
 from codeforces import put_code
@@ -139,6 +141,7 @@ class KeyHandler:
             },
             (CAPS, RRT): {
                 "H": self.launch_hearth,
+                "R": toggle_primary_resolution,
             },
             (CAPS, RLT, RRT): {
                 "Q": self.exit,
@@ -299,13 +302,13 @@ class KeyHandler:
             print("reset")
         self.rep = 1
         State.remove_modifier(CAPS)
-        self.LMB_held = False
+        State.reset_mouse_buttons()
         State.update_monitors()
 
         return True
 
     def mouse_reset(self):
-        State.LMB_held = False
+        State.reset_mouse_buttons()
         State.reset_mouse_direction()
         State.reset_scroll_direction()
         for mod in (LLT, RRT):
@@ -369,9 +372,14 @@ class KeyHandler:
         # if self.alarm_clock:
         #     self.alarm_clock.save()
 
+        logging.warning("exit() called from:\n%s", "".join(traceback.format_stack()))
+        for h in logging.getLogger().handlers:
+            h.flush()
+
         threading.Timer(0.1, lambda: os._exit(0)).start()
 
     def restart(self):
+        logging.info("restart() called")
         subprocess.Popen([sys.executable] + sys.argv, close_fds=True)
         self.exit()
 
@@ -387,6 +395,6 @@ class KeyHandler:
                     stderr=subprocess.DEVNULL,
                     close_fds=True,
                 )
-            except Exception as e:
-                print(f"launch_hearth failed: {e}", file=sys.stderr)
+            except Exception:
+                logging.exception("launch_hearth failed")
         threading.Thread(target=run, daemon=True).start()
